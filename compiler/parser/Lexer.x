@@ -512,6 +512,7 @@ data Token
   | ITbang
   | ITstar
   | ITdot
+  | ITdotdotdot
 
   | ITbiglam                    -- GHC-extension symbols
 
@@ -687,6 +688,8 @@ reservedSymsFM = listToUFM $
        ,("*", ITstar, always) -- \i -> kindSigsEnabled i || tyFamEnabled i)
         -- For 'forall a . t'
        ,(".", ITdot,  always) -- \i -> explicitForallEnabled i || inRulePrag i)
+        -- For 'a -> ... -> b'
+       ,("...", ITdotdotdot, always) -- TODOT: always?
 
        ,("-<",  ITlarrowtail, arrowsEnabled)
        ,(">-",  ITrarrowtail, arrowsEnabled)

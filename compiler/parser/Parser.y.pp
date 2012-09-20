@@ -291,6 +291,7 @@ incorrect.
  '-<<'          { L _ ITLarrowtail }            -- for arrow notation
  '>>-'          { L _ ITRarrowtail }            -- for arrow notation
  '.'            { L _ ITdot }
+ '...'          { L _ ITdotdotdot }
 
  '{'            { L _ ITocurly }                        -- special symbols
  '}'            { L _ ITccurly }
@@ -1917,6 +1918,7 @@ tyvarid :: { Located RdrName }
         | 'unsafe'              { L1 $! mkUnqual tvName (fsLit "unsafe") }
         | 'safe'                { L1 $! mkUnqual tvName (fsLit "safe") }
         | 'interruptible'       { L1 $! mkUnqual tvName (fsLit "interruptible") }
+        | '...'                 { L1 $! mkTyWCUnqual }
 
 -----------------------------------------------------------------------------
 -- Variables 
