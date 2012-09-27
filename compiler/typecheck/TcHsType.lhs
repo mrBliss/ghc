@@ -473,6 +473,10 @@ tc_hs_type hs_ty@(HsTyLit tl) exp_kind = do
   checkExpectedKind hs_ty k exp_kind
   return ty
 
+
+tc_hs_type HsWildCardTy (EK k _) = newFlexiTyVarTy k
+
+
 ---------------------------
 tc_tuple :: HsType Name -> HsTupleSort -> [LHsType Name] -> ExpKind -> TcM TcType
 -- Invariant: tup_sort is not HsBoxedOrConstraintTuple

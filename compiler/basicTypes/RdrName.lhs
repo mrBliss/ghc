@@ -36,7 +36,7 @@ module RdrName (
 
 	-- ** Construction
 	mkRdrUnqual, mkRdrQual, 
-	mkUnqual, mkVarUnqual, mkQual, mkOrig, mkTyWCUnqual,
+	mkUnqual, mkVarUnqual, mkQual, mkOrig,
 	nameRdrName, getRdrName, 
 
 	-- ** Destruction
@@ -191,11 +191,6 @@ mkUnqual sp n = Unqual (mkOccNameFS sp n)
 
 mkVarUnqual :: FastString -> RdrName
 mkVarUnqual n = Unqual (mkVarOccFS n)
-
--- Generate a type wildcard
-mkTyWCUnqual :: RdrName
-mkTyWCUnqual = Unqual (mkTyVarOcc "__WC__")
-
 
 -- | Make a qualified 'RdrName' in the given namespace and where the 'ModuleName' and
 -- the 'OccName' are taken from the first and second elements of the tuple respectively
