@@ -689,7 +689,6 @@ reservedSymsFM = listToUFM $
         -- For 'forall a . t'
        ,(".", ITdot,  always) -- \i -> explicitForallEnabled i || inRulePrag i)
         -- For 'a -> ... -> b'
-       ,("...", ITdotdotdot, always) -- TODOT: always?
 
        ,("-<",  ITlarrowtail, arrowsEnabled)
        ,(">-",  ITrarrowtail, arrowsEnabled)

@@ -291,7 +291,6 @@ incorrect.
  '-<<'          { L _ ITLarrowtail }            -- for arrow notation
  '>>-'          { L _ ITRarrowtail }            -- for arrow notation
  '.'            { L _ ITdot }
- '...'          { L _ ITdotdotdot }
 
  '{'            { L _ ITocurly }                        -- special symbols
  '}'            { L _ ITccurly }
@@ -1089,7 +1088,7 @@ atype :: { LHsType RdrName }
         | '[' ctype ',' comma_types1 ']'              { LL $ HsExplicitListTy placeHolderKind ($2 : $4) }
         | INTEGER            {% mkTyLit $ LL $ HsNumTy $ getINTEGER $1 }
         | STRING             {% mkTyLit $ LL $ HsStrTy $ getSTRING  $1 }
-        | '...'              { L1 $! HsWildCardTy }
+        | '_'                { L1 $! HsWildCardTy }
 
 
 -- An inst_type is what occurs in the head of an instance decl
