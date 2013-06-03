@@ -767,7 +767,7 @@ decl_cls  : at_decl_cls                 { LL (unitOL $1) }
 
           -- A 'default' signature used with the generic-programming extension
           | 'default' infixexp '::' sigtypedoc
-                    {% do { (TypeSig l ty) <- checkValSig $2 $4
+                    {% do { (TypeSig l ty extra) <- checkValSig $2 $4 False -- TODO disallow wildcards
                           ; return (LL $ unitOL (LL $ SigD (GenericSig l ty))) } }
 
 decls_cls :: { Located (OrdList (LHsDecl RdrName)) }    -- Reversed
@@ -1342,10 +1342,12 @@ sigdecl :: { Located (OrdList (LHsDecl RdrName)) }
         : 
         -- See Note [Declaration/signature overlap] for why we need infixexp here
           infixexp '::' sigtypedoc
-                        {% do s <- checkValSig $1 $3 
+                        {% do (ty, extra) <- checkPartialTypeSignature $3
+                        ; s <- checkValSig $1 ty extra
                         ; return (LL $ unitOL (LL $ SigD s)) }
         | var ',' sig_vars '::' sigtypedoc
-                                { LL $ toOL [ LL $ SigD (TypeSig ($1 : unLoc $3) $5) ] }
+                                {% do (ty, extra) <- checkPartialTypeSignature $5
+                                ; return $ LL $ toOL [ LL $ SigD (TypeSig ($1 : unLoc $3) ty extra) ] }
         | infix prec ops        { LL $ toOL [ LL $ SigD (FixSig (FixitySig n (Fixity $2 (unLoc $1))))
                                              | n <- unLoc $3 ] }
         | '{-# INLINE' activation qvar '#-}'        

@@ -917,7 +917,7 @@ rnTyClDecl mb_cls (ClassDecl {tcdCtxt = context, tcdLName = lcls,
 
 	-- Check the signatures
 	-- First process the class op sigs (op_sigs), then the fixity sigs (non_op_sigs).
-	; let sig_rdr_names_w_locs = [op | L _ (TypeSig ops _) <- sigs, op <- ops]
+	; let sig_rdr_names_w_locs = [op | L _ (TypeSig ops _ _) <- sigs, op <- ops]
 	; checkDupRdrNames sig_rdr_names_w_locs
 		-- Typechecker is responsible for checking that we only
 		-- give default-method bindings for things in this class.

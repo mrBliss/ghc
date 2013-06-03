@@ -151,7 +151,7 @@ repTopDs group
 hsSigTvBinders :: HsValBinds Name -> [Name]
 -- See Note [Scoped type variables in bindings]
 hsSigTvBinders binds
-  = [hsLTyVarName tv | L _ (TypeSig _ (L _ (HsForAllTy Explicit qtvs _ _))) <- sigs
+  = [hsLTyVarName tv | L _ (TypeSig _ (L _ (HsForAllTy Explicit qtvs _ _)) _) <- sigs
                      , tv <- hsQTvBndrs qtvs]
   where
     sigs = case binds of
@@ -554,7 +554,7 @@ rep_sigs' sigs = do { sigs1 <- mapM rep_sig sigs ;
 rep_sig :: LSig Name -> DsM [(SrcSpan, Core TH.DecQ)]
 	-- Singleton => Ok
 	-- Empty     => Too hard, signature ignored
-rep_sig (L loc (TypeSig nms ty))      = mapM (rep_ty_sig loc ty) nms
+rep_sig (L loc (TypeSig nms ty _))      = mapM (rep_ty_sig loc ty) nms -- TODOT what about the extra constraints wildcard?
 rep_sig (L _   (GenericSig nm _))     = failWithDs msg
   where msg = vcat  [ ptext (sLit "Illegal default signature for") <+> quotes (ppr nm)
                     , ptext (sLit "Default signatures are not supported by Template Haskell") ]

@@ -145,6 +145,11 @@ data TcSigInfo
 
         sig_theta  :: TcThetaType,  -- Instantiated theta
 
+        sig_extra  :: Maybe TcTyVar, -- A metavariable that will unify
+                                     -- with the extra constraints
+                                     -- inferred during generalisation
+                                     -- See Note [Partial type signatures] TODO write
+
         sig_tau    :: TcSigmaType,  -- Instantiated tau
 		      		    -- See Note [sig_tau may be polymorphic]
 

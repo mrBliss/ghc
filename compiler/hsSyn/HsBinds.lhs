@@ -315,7 +315,7 @@ plusHsValBinds _ _
 getTypeSigNames :: HsValBinds a -> NameSet
 -- Get the names that have a user type sig
 getTypeSigNames (ValBindsOut _ sigs)
-  = mkNameSet [unLoc n | L _ (TypeSig names _) <- sigs, n <- names]
+  = mkNameSet [unLoc n | L _ (TypeSig names _ _) <- sigs, n <- names]
 getTypeSigNames _
   = panic "HsBinds.getTypeSigNames"
 \end{code}
@@ -453,7 +453,9 @@ type LSig name = Located (Sig name)
 data Sig name   -- Signatures and pragmas
   =     -- An ordinary type signature
         -- f :: Num a => a -> a
-    TypeSig [Located name] (LHsType name)
+        -- The Bool indicates the presence of an extra constraints
+        -- wildcard, e.g. f :: (Num a, _) => a -> a
+    TypeSig [Located name] (LHsType name) Bool
 
         -- A type signature for a default method inside a class
         -- default eq :: (Representable0 a, GEq (Rep0 a)) => a -> a -> Bool
@@ -578,7 +580,7 @@ overlapHsSig :: Eq a => LSig a -> LSig a -> Bool
 overlapHsSig sig1 sig2 = case (unLoc sig1, unLoc sig2) of
   (FixSig (FixitySig n1 _), FixSig (FixitySig n2 _)) -> unLoc n1 == unLoc n2
   (IdSig n1,                IdSig n2)                -> n1 == n2
-  (TypeSig ns1 _,           TypeSig ns2 _)           -> ns1 `overlaps_with` ns2
+  (TypeSig ns1 _ _,         TypeSig ns2 _ _)         -> ns1 `overlaps_with` ns2
   (GenericSig ns1 _,        GenericSig ns2 _)        -> ns1 `overlaps_with` ns2
   (InlineSig n1 _,          InlineSig n2 _)          -> unLoc n1 == unLoc n2
   -- For specialisations, we don't have equality over HsType, so it's not
@@ -594,7 +596,9 @@ instance (OutputableBndr name) => Outputable (Sig name) where
     ppr sig = ppr_sig sig
 
 ppr_sig :: OutputableBndr name => Sig name -> SDoc
-ppr_sig (TypeSig vars ty)         = pprVarSig (map unLoc vars) (ppr ty)
+ppr_sig (TypeSig vars ty extra)   = pprVarSig (map unLoc vars) (extraText <+> ppr ty)
+  where extraText | extra = text "_ =>"  -- TODO print the extra ct wc
+                  | True  = empty
 ppr_sig (GenericSig vars ty)      = ptext (sLit "default") <+> pprVarSig (map unLoc vars) (ppr ty)
 ppr_sig (IdSig id)                = pprVarSig [id] (ppr (varType id))
 ppr_sig (FixSig fix_sig)          = ppr fix_sig

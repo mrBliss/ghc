@@ -1289,7 +1289,7 @@ gen_Data_binds dflags loc tycon
     genDataTyCon :: (LHsBind RdrName, LSig RdrName)
     genDataTyCon        --  $dT
       = (mkHsVarBind loc rdr_name rhs,
-         L loc (TypeSig [L loc rdr_name] sig_ty))
+         L loc (TypeSig [L loc rdr_name] sig_ty False))
       where
         rdr_name = mk_data_type_name tycon
         sig_ty   = nlHsTyVar dataType_RDR
@@ -1301,7 +1301,7 @@ gen_Data_binds dflags loc tycon
     genDataDataCon :: DataCon -> (LHsBind RdrName, LSig RdrName)
     genDataDataCon dc       --  $cT1 etc
       = (mkHsVarBind loc rdr_name rhs,
-         L loc (TypeSig [L loc rdr_name] sig_ty))
+         L loc (TypeSig [L loc rdr_name] sig_ty False))
       where
         rdr_name = mk_constr_name dc
         sig_ty   = nlHsTyVar constr_RDR
@@ -1760,7 +1760,7 @@ fiddling around.
 genAuxBindSpec :: SrcSpan -> AuxBindSpec -> (LHsBind RdrName, LSig RdrName)
 genAuxBindSpec loc (DerivCon2Tag tycon)
   = (mk_FunBind loc rdr_name eqns, 
-     L loc (TypeSig [L loc rdr_name] (L loc sig_ty)))
+     L loc (TypeSig [L loc rdr_name] (L loc sig_ty) False))
   where
     rdr_name = con2tag_RDR tycon
 
@@ -1785,7 +1785,7 @@ genAuxBindSpec loc (DerivTag2Con tycon)
   = (mk_FunBind loc rdr_name 
 	[([nlConVarPat intDataCon_RDR [a_RDR]], 
 	   nlHsApp (nlHsVar tagToEnum_RDR) a_Expr)],
-     L loc (TypeSig [L loc rdr_name] (L loc sig_ty)))
+     L loc (TypeSig [L loc rdr_name] (L loc sig_ty) False))
   where
     sig_ty = HsCoreTy $ mkForAllTys (tyConTyVars tycon) $
              intTy `mkFunTy` mkParentType tycon
@@ -1794,7 +1794,7 @@ genAuxBindSpec loc (DerivTag2Con tycon)
 
 genAuxBindSpec loc (DerivMaxTag tycon)
   = (mkHsVarBind loc rdr_name rhs,
-     L loc (TypeSig [L loc rdr_name] (L loc sig_ty)))
+     L loc (TypeSig [L loc rdr_name] (L loc sig_ty) False))
   where
     rdr_name = maxtag_RDR tycon
     sig_ty = HsCoreTy intTy

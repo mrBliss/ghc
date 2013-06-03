@@ -558,6 +558,7 @@ splitFunKind the_fun fun_kind args
 tcHsContext :: LHsContext Name -> TcM [PredType]
 tcHsContext ctxt = mapM tcHsLPredType (unLoc ctxt)
 
+
 tcHsLPredType :: LHsType Name -> TcM PredType
 tcHsLPredType pred = tc_lhs_type pred ekConstraint
 

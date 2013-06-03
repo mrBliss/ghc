@@ -518,7 +518,7 @@ getLocalNonValBinders fixity_env
 
     -- In a hs-boot file, the value binders come from the
     --  *signatures*, and there should be no foreign binders
-    hs_boot_sig_bndrs = [n | L _ (TypeSig ns _) <- val_sigs, n <- ns]
+    hs_boot_sig_bndrs = [n | L _ (TypeSig ns _ _) <- val_sigs, n <- ns]
     ValBindsIn _ val_sigs = val_binds
 
     new_simple :: Located RdrName -> RnM AvailInfo

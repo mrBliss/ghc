@@ -540,7 +540,7 @@ mkSigTvFn sigs
     env :: NameEnv [Name]
     env = mkNameEnv [ (name, hsLKiTyVarNames ltvs)  -- Kind variables and type variables
 		    | L _ (TypeSig names
-			           (L _ (HsForAllTy Explicit ltvs _ _))) <- sigs
+			           (L _ (HsForAllTy Explicit ltvs _ _)) _) <- sigs
                     , (L _ name) <- names]
 	-- Note the pattern-match on "Explicit"; we only bind
 	-- type variables from signatures with an explicit top-level for-all
@@ -673,10 +673,10 @@ renameSig :: HsSigCtxt -> Sig RdrName -> RnM (Sig Name, FreeVars)
 renameSig _ (IdSig x)
   = return (IdSig x, emptyFVs)	  -- Actually this never occurs
 
-renameSig ctxt sig@(TypeSig vs ty)
+renameSig ctxt sig@(TypeSig vs ty extra)
   = do	{ new_vs <- mapM (lookupSigOccRn ctxt sig) vs
 	; (new_ty, fvs) <- rnHsSigType (ppr_sig_bndrs vs) ty
-	; return (TypeSig new_vs new_ty, fvs) }
+	; return (TypeSig new_vs new_ty extra, fvs) }
 
 renameSig ctxt sig@(GenericSig vs ty)
   = do	{ defaultSigs_on <- xoptM Opt_DefaultSignatures

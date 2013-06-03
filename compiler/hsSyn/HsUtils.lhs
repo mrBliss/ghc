@@ -643,7 +643,7 @@ hsTyClDeclBinders (ClassDecl { tcdLName = cls_name, tcdSigs = sigs
   = cls_name : 
     concatMap hsLTyClDeclBinders ats ++ 
     concatMap (hsFamInstBinders . unLoc) fam_insts ++
-    [n | L _ (TypeSig ns _) <- sigs, n <- ns]
+    [n | L _ (TypeSig ns _ _) <- sigs, n <- ns]
 
 hsTyClDeclBinders (TyDecl { tcdLName = name, tcdTyDefn = defn }) 
   = name : hsTyDefnBinders defn

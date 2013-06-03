@@ -41,6 +41,7 @@ module RdrHsSyn (
         checkMonadComp,       -- P (HsStmtContext RdrName)
         checkValDef,          -- (SrcLoc, HsExp, HsRhs, [HsDecl]) -> P HsDecl
         checkValSig,          -- (SrcLoc, HsExp, HsRhs, [HsDecl]) -> P HsDecl
+        checkPartialTypeSignature,
         checkDoAndIfThenElse,
         checkRecordSyntax,
         parseError,
@@ -682,11 +683,12 @@ checkPatBind lhs (L _ grhss)
 checkValSig
         :: LHsExpr RdrName
         -> LHsType RdrName
+        -> Bool
         -> P (Sig RdrName)
-checkValSig (L l (HsVar v)) ty
+checkValSig (L l (HsVar v)) ty extra
   | isUnqual v && not (isDataOcc (rdrNameOcc v))
-  = return (TypeSig [L l v] ty)
-checkValSig lhs@(L l _) ty
+  = return (TypeSig [L l v] ty extra)
+checkValSig lhs@(L l _) ty _
   = parseErrorSDoc l ((text "Invalid type signature:" <+>
                        ppr lhs <+> text "::" <+> ppr ty)
                    $$ text hint)
@@ -705,6 +707,53 @@ checkValSig lhs@(L l _) ty
 
     foreign_RDR = mkUnqual varName (fsLit "foreign")
     default_RDR = mkUnqual varName (fsLit "default")
+
+
+isWildcardTy :: HsType a -> Bool
+isWildcardTy HsWildCardTy = True
+isWildcardTy _ = False
+
+checkPartialTypeSignature :: LHsType RdrName -> P (LHsType RdrName, Bool)
+checkPartialTypeSignature fullTy@(L l (HsForAllTy flag bndrs (L lc ctxt) ty)) = do
+  checkNoExtraConstraintsWildcard ty
+  let (rest, extra) = case () of
+        _ | null ctxt -> ([], False)
+        _ | isWildcardTy $ unLoc (last ctxt) -> (init ctxt, True)
+        _ | otherwise -> (ctxt, False)
+  if any (isWildcardTy . unLoc) rest
+    then parseErrorSDoc lc ((text "Invalid partial type signature:" <+> ppr fullTy)
+                           $$ text hint)
+    else return (L l (HsForAllTy flag bndrs (L lc rest) ty), extra)
+  where hint = "An extra constraint wildcard is only allowed at the end of the constraints"
+checkPartialTypeSignature ty = do
+  checkNoExtraConstraintsWildcard ty
+  return (ty, False)
+  
+checkNoExtraConstraintsWildcard :: LHsType RdrName -> P ()
+checkNoExtraConstraintsWildcard fullTy@(L _ (HsForAllTy flag bndrs (L lc ctxt) ty))
+  | any (isWildcardTy . unLoc) ctxt = parseErrorSDoc lc ((text "Invalid partial type signature:"
+                                                          <+> ppr fullTy) $$ text hint)
+  | otherwise = checkNoExtraConstraintsWildcard ty
+  where hint = "An extra constraint wildcard is only allowed at the top-level of the signature"
+checkNoExtraConstraintsWildcard ty = go' ty
+  where go' = go . unLoc
+        go (HsAppTy x y)            = go' x >> go' y
+        go (HsFunTy x y)            = go' x >> go' y
+        go (HsListTy x)             = go' x
+        go (HsPArrTy x)             = go' x
+        go (HsTupleTy _ xs)         = mapM_ go' xs
+        go (HsOpTy x _ y)           = go' x >> go' y
+        go (HsParTy x)              = go' x
+        go (HsIParamTy _ x)         = go' x
+        go (HsEqTy x y)             = go' x >> go' y
+        go (HsKindSig x y)          = go' x >> go' y
+        go (HsDocTy x _)            = go' x
+        go (HsBangTy _ x)           = go' x
+        go (HsRecTy xs)             = mapM_ (go' . getBangType . cd_fld_type) xs
+        go (HsExplicitListTy _ xs)  = mapM_ go' xs
+        go (HsExplicitTupleTy _ xs) = mapM_ go' xs
+        go (HsWrapTy _ x)           = go' (noLoc x)
+        go _                        = return ()
 
 checkDoAndIfThenElse :: LHsExpr RdrName
                      -> Bool
