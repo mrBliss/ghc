@@ -258,6 +258,8 @@ data HsType name
   | HsWrapTy HsTyWrapper (HsType name)  -- only in typechecker output
 
   | HsWildcardTy         -- A type wildcard
+
+  | HsNamedWildcardTy name    -- A named wildcard
   deriving (Data, Typeable)
 
 
@@ -631,6 +633,7 @@ ppr_mono_ty _    (HsExplicitListTy _ tys) = quote $ brackets (interpp'SP tys)
 ppr_mono_ty _    (HsExplicitTupleTy _ tys) = quote $ parens (interpp'SP tys)
 ppr_mono_ty _    (HsTyLit t)         = ppr_tylit t
 ppr_mono_ty _    HsWildcardTy        = text "_"
+ppr_mono_ty _    (HsNamedWildcardTy name) = ppr name
 
 
 ppr_mono_ty ctxt_prec (HsWrapTy (WpKiApps _kis) ty)

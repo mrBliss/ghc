@@ -487,6 +487,7 @@ data ExtensionFlag
    | Opt_TraditionalRecordSyntax
    | Opt_LambdaCase
    | Opt_MultiWayIf
+   | Opt_NamedWildcards
    deriving (Eq, Enum, Show)
 
 -- | Contains not only a collection of 'DynFlag's but also a plethora of
@@ -2174,6 +2175,7 @@ xFlags = [
   ( "ExtendedDefaultRules",             Opt_ExtendedDefaultRules, nop ),
   ( "ImplicitParams",                   Opt_ImplicitParams, nop ),
   ( "ScopedTypeVariables",              Opt_ScopedTypeVariables, nop ),
+  ( "NamedWildcards",                   Opt_NamedWildcards, nop ),
 
   ( "PatternSignatures",                Opt_ScopedTypeVariables,
     deprecatedForExtension "ScopedTypeVariables" ),

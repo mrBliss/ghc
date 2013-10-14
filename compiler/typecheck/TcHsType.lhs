@@ -293,6 +293,8 @@ tcCheckHsTypeAndGen hs_ty kind
   = do { ty  <- tc_hs_type hs_ty (EK kind (ptext (sLit "Expected")))
        ; kvs <- kindGeneralize (tyVarsOfType ty) []
        ; return (mkForAllTys kvs ty) }
+
+-- TODOT replace the named wildcards with fresh uvars
 \end{code}
 
 Like tcExpr, tc_hs_type takes an expected kind which it unifies with
@@ -475,6 +477,8 @@ tc_hs_type hs_ty@(HsTyLit tl) exp_kind = do
 
 
 tc_hs_type HsWildcardTy (EK k _) = newFlexiTyVarTy k
+
+-- TODOT case HsNamedWildcardTy
 
 
 ---------------------------
