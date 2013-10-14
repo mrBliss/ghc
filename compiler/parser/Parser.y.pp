@@ -1088,7 +1088,7 @@ atype :: { LHsType RdrName }
         | '[' ctype ',' comma_types1 ']'              { LL $ HsExplicitListTy placeHolderKind ($2 : $4) }
         | INTEGER            {% mkTyLit $ LL $ HsNumTy $ getINTEGER $1 }
         | STRING             {% mkTyLit $ LL $ HsStrTy $ getSTRING  $1 }
-        | '_'                { L1 $! HsWildCardTy }
+        | '_'                { L1 $! HsWildcardTy }
 
 
 -- An inst_type is what occurs in the head of an instance decl

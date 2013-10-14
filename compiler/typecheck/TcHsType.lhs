@@ -474,7 +474,7 @@ tc_hs_type hs_ty@(HsTyLit tl) exp_kind = do
   return ty
 
 
-tc_hs_type HsWildCardTy (EK k _) = newFlexiTyVarTy k
+tc_hs_type HsWildcardTy (EK k _) = newFlexiTyVarTy k
 
 
 ---------------------------

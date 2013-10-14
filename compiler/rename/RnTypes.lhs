@@ -298,9 +298,9 @@ rnHsTyKi isType doc ty@(HsExplicitTupleTy kis tys)
        ; (tys', fvs) <- rnLHsTypes doc tys
        ; return (HsExplicitTupleTy kis tys', fvs) }
 
-rnHsTyKi isType _ HsWildCardTy
+rnHsTyKi isType _ HsWildcardTy
   = ASSERT( isType )
-    return (HsWildCardTy, emptyFVs)
+    return (HsWildcardTy, emptyFVs)
 
 --------------
 rnTyVar :: Bool -> RdrName -> RnM Name
@@ -1010,7 +1010,7 @@ extract_lty (L _ ty) acc
       HsForAllTy _ tvs cx ty    -> extract_hs_tv_bndrs tvs acc $
                                    extract_lctxt cx   $
                                    extract_lty ty ([],[])
-      HsWildCardTy              -> acc
+      HsWildcardTy              -> acc
 
 extract_hs_tv_bndrs :: LHsTyVarBndrs RdrName -> FreeKiTyVars
                     -> FreeKiTyVars -> FreeKiTyVars

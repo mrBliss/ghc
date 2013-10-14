@@ -710,7 +710,7 @@ checkValSig lhs@(L l _) ty _
 
 
 isWildcardTy :: HsType a -> Bool
-isWildcardTy HsWildCardTy = True
+isWildcardTy HsWildcardTy = True
 isWildcardTy _ = False
 
 checkPartialTypeSignature :: LHsType RdrName -> P (LHsType RdrName, Bool)
