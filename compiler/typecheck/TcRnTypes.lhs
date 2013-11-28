@@ -129,7 +129,6 @@ import Util
 
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Ord (comparing)
 import Data.Set (Set)
 \end{code}
 

@@ -730,7 +730,7 @@ checkPartialTypeSignature ty = do
   return (ty, False)
   
 checkNoExtraConstraintsWildcard :: LHsType RdrName -> P ()
-checkNoExtraConstraintsWildcard fullTy@(L _ (HsForAllTy flag bndrs (L lc ctxt) ty))
+checkNoExtraConstraintsWildcard fullTy@(L _ (HsForAllTy _ _ (L lc ctxt) ty))
   | any (isWildcardTy . unLoc) ctxt = parseErrorSDoc lc ((text "Invalid partial type signature:"
                                                           <+> ppr fullTy) $$ text hint)
   | otherwise = checkNoExtraConstraintsWildcard ty
