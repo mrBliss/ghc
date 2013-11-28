@@ -153,7 +153,8 @@ initTc hsc_env hsc_src keep_rn_syntax mod do_this
                 tcl_lie             = lie_var,
                 tcl_meta            = meta_var,
                 tcl_untch           = initTyVarUnique,
-                tcl_named_wildcards = named_wc_map
+                tcl_named_wildcards = named_wc_map,
+                tcl_untch_wildcards = NoUntouchables
              } ;
         } ;
 
@@ -1063,7 +1064,9 @@ isUntouchable tv
   = return False
   | otherwise 
   = do { env <- getLclEnv
-       ; return (varUnique tv < tcl_untch env) }
+       ; return (varUnique tv < tcl_untch env
+                 -- Also check if it's not a touchable created by a wildcard
+                 && not (inTouchableRange (tcl_untch_wildcards env) tv)) }
 
 getLclTypeEnv :: TcM TcTypeEnv
 getLclTypeEnv = do { env <- getLclEnv; return (tcl_env env) }

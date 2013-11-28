@@ -1551,7 +1551,7 @@ For the description of subkinding in GHC, see
 
 \begin{code}
 type MetaKindVar = TyVar  -- invariant: MetaKindVar will always be a
-                          -- TcTyVar with details MetaTv TauTv ...
+                          -- TcTyVar with details MetaTv (TauTv ...) ...
 -- meta kind var constructors and functions are in TcType
 
 type SimpleKind = Kind

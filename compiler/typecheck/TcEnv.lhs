@@ -445,7 +445,7 @@ tc_extend_local_env extra_env thing_inside
                          emptyVarSet
           NotTopLevel -> id_tvs
       where
-        id_tvs = tyVarsOfType (idType id)
+        id_tvs = filterVarSet (not . isWildcardVar) $ tyVarsOfType (idType id)
     get_tvs (_, ATyVar _ tv)                 -- See Note [Global TyVars]
       = tyVarsOfType (tyVarKind tv) `extendVarSet` tv 
       

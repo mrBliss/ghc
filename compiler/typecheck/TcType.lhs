@@ -320,9 +320,11 @@ instance Outputable MetaDetails where
   ppr (Indirect ty) = ptext (sLit "Indirect") <+> ppr ty
 
 data MetaInfo
-   = TauTv	   -- This MetaTv is an ordinary unification variable
+   = TauTv Bool	   -- This MetaTv is an ordinary unification variable
      		   -- A TauTv is always filled in with a tau-type, which
-		   -- never contains any ForAlls 
+     		   -- never contains any ForAlls.
+     		   -- The boolean is true when the meta var originates
+     		   -- from a wildcard.
 
    | SigTv 	   -- A variant of TauTv, except that it should not be
 		   -- unified with a type, only with a type variable
@@ -391,7 +393,7 @@ mkKindName unique = mkSystemName unique kind_var_occ
 
 mkMetaKindVar :: Unique -> IORef MetaDetails -> MetaKindVar
 mkMetaKindVar u r
-  = mkTcTyVar (mkKindName u) superKind (MetaTv TauTv r)
+  = mkTcTyVar (mkKindName u) superKind (MetaTv (TauTv False) r)
 
 kind_var_occ :: OccName	-- Just one for all MetaKindVars
 			-- They may be jiggled by tidying
@@ -407,13 +409,13 @@ kind_var_occ = mkOccName tvName "k"
 \begin{code}
 pprTcTyVarDetails :: TcTyVarDetails -> SDoc
 -- For debugging
-pprTcTyVarDetails (SkolemTv True)  = ptext (sLit "ssk")
-pprTcTyVarDetails (SkolemTv False) = ptext (sLit "sk")
-pprTcTyVarDetails (RuntimeUnk {})  = ptext (sLit "rt")
-pprTcTyVarDetails (FlatSkol {})    = ptext (sLit "fsk")
-pprTcTyVarDetails (MetaTv TauTv _) = ptext (sLit "tau")
-pprTcTyVarDetails (MetaTv TcsTv _) = ptext (sLit "tcs")
-pprTcTyVarDetails (MetaTv SigTv _) = ptext (sLit "sig")
+pprTcTyVarDetails (SkolemTv True)      = ptext (sLit "ssk")
+pprTcTyVarDetails (SkolemTv False)     = ptext (sLit "sk")
+pprTcTyVarDetails (RuntimeUnk {})      = ptext (sLit "rt")
+pprTcTyVarDetails (FlatSkol {})        = ptext (sLit "fsk")
+pprTcTyVarDetails (MetaTv (TauTv _) _) = ptext (sLit "tau")
+pprTcTyVarDetails (MetaTv TcsTv _)     = ptext (sLit "tcs")
+pprTcTyVarDetails (MetaTv SigTv _)     = ptext (sLit "sig")
 
 pprUserTypeCtxt :: UserTypeCtxt -> SDoc
 pprUserTypeCtxt (InfSigCtxt n)    = ptext (sLit "the inferred type for") <+> quotes (ppr n)

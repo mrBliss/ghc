@@ -148,7 +148,7 @@ data TcSigInfo
         sig_extra  :: Maybe TcTyVar, -- A metavariable that will unify
                                      -- with the extra constraints
                                      -- inferred during generalisation
-                                     -- See Note [Partial type signatures] TODO write
+                                     -- See Note [Partial type signatures] TODOT write
 
         sig_tau    :: TcSigmaType,  -- Instantiated tau
 		      		    -- See Note [sig_tau may be polymorphic]

@@ -49,7 +49,7 @@ module TcRnTypes(
 	ArrowCtxt(NoArrowCtxt), newArrowScope, escapeArrowScope,
 
 	-- Constraints
-        Untouchables(..), inTouchableRange, isNoUntouchables,
+        Untouchables(..), inTouchableRange, isNoUntouchables, addTouchableRange,
 
        -- Canonical constraints
         Xi, Ct(..), Cts, emptyCts, andCts, andManyCts, keepWanted,
@@ -455,11 +455,12 @@ data TcLclEnv		-- Changes as we move inside an expression
 	tcl_untch :: Unique,	    -- Any TcMetaTyVar with 
 		     		    --     unique >= tcl_untch is touchable
 		     		    --     unique <  tcl_untch is untouchable
-        tcl_named_wildcards :: TcRef NamedWildcardMap -- Maps named wildcards to types
+        tcl_named_wildcards :: TcRef NamedWildcardMap, -- Maps named wildcards to types
                             -- Used to desugar named wildcards to meta variables.
                             -- All named wildcards with the same name within one signature
                             -- (TODOT scoped?) will be replaced by occurrences of the
                             -- same metavariable.
+        tcl_untch_wildcards :: Untouchables -- Touchables generated during wildcard desugaring
     }
 
 -- TODOT better location
@@ -1107,18 +1108,25 @@ data Untouchables = NoUntouchables
                   | TouchableRange
                           Unique  -- Low end
                           Unique  -- High end
+                  | RangeDisj -- A disjunction of two ranges
+                          Untouchables
+                          Untouchables
+                    
  -- A TcMetaTyvar is *touchable* iff its unique u satisfies
  --   u >= low
  --   u < high
+ -- for at least one of the ranges
 
 instance Outputable Untouchables where
   ppr NoUntouchables = ptext (sLit "No untouchables")
   ppr (TouchableRange low high) = ptext (sLit "Touchable range:") <+> 
                                   ppr low <+> char '-' <+> ppr high
+  ppr (RangeDisj range1 range2) = ppr range1 <+> ptext (sLit "or") <+> ppr range2
 
 isNoUntouchables :: Untouchables -> Bool
 isNoUntouchables NoUntouchables      = True
 isNoUntouchables (TouchableRange {}) = False
+isNoUntouchables (RangeDisj _ _)     = False
 
 inTouchableRange :: Untouchables -> TcTyVar -> Bool
 inTouchableRange NoUntouchables _ = True
@@ -1126,6 +1134,11 @@ inTouchableRange (TouchableRange low high) tv
   = uniq >= low && uniq < high
   where
     uniq = varUnique tv
+inTouchableRange (RangeDisj range1 range2) tv = inTouchableRange range1 tv || inTouchableRange range2 tv
+
+addTouchableRange :: Untouchables -> Untouchables -> Untouchables
+addTouchableRange NoUntouchables untch  = untch
+addTouchableRange untch1         untch2 = RangeDisj untch1 untch2
 
 -- EvVar defined in module Var.lhs:
 -- Evidence variables include all *quantifiable* constraints

@@ -776,7 +776,7 @@ uUnfilledVar origin swapped tv1 details1 (TyVarTy tv2)
 
 uUnfilledVar origin swapped tv1 details1 non_var_ty2  -- ty2 is not a type variable
   = case details1 of
-      MetaTv TauTv ref1 
+      MetaTv (TauTv _) ref1 
         -> do { mb_ty2' <- checkTauTvUpdate tv1 non_var_ty2
               ; case mb_ty2' of
                   Nothing   -> do { traceTc "Occ/kind defer" (ppr tv1); defer }
