@@ -358,8 +358,11 @@ mkEdges sig_fn binds
     | (bind, key) <- keyd_binds
     ]
   where
+    -- No signature or a partial signature
     no_sig :: Name -> Bool
     no_sig n = isNothing (sig_fn n)
+               || containsWildcards (sig_tau (fromJust (sig_fn n)))
+               -- TODOT: || isJust (sig_extra sig)
 
     keyd_binds = bagToList binds `zip` [0::BKey ..]
 
