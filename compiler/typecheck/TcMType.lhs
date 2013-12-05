@@ -184,25 +184,27 @@ predTypeOccName ty = case classifyPredType ty of
 \begin{code}
 tcInstType :: ([TyVar] -> TcM (TvSubst, [TcTyVar]))     -- How to instantiate the type variables
 	   -> TcType 					-- Type to instantiate
-	   -> TcM ([TcTyVar], TcThetaType, TcType)	-- Result
-		-- (type vars (excl coercion vars), preds (incl equalities), rho)
+	   -> TcM ([TcTyVar], TcThetaType, TcType, TvSubst)	-- Result
+		-- (type vars (excl coercion vars), preds (incl equalities), rho, substitution)
 tcInstType inst_tyvars ty
   = case tcSplitForAllTys ty of
 	([],     rho) -> let	-- There may be overloading despite no type variables;
 				-- 	(?x :: Int) => Int -> Int
 			   (theta, tau) = tcSplitPhiTy rho
 			 in
-			 return ([], theta, tau)
+			 return ([], theta, tau, emptyTvSubst)
 
 	(tyvars, rho) -> do { (subst, tyvars') <- inst_tyvars tyvars
 			    ; let (theta, tau) = tcSplitPhiTy (substTy subst rho)
-			    ; return (tyvars', theta, tau) }
+			    ; return (tyvars', theta, tau, subst) }
 
 tcSkolDFunType :: Type -> TcM ([TcTyVar], TcThetaType, TcType)
 -- Instantiate a type signature with skolem constants, but 
 -- do *not* give them fresh names, because we want the name to
 -- be in the type environment: it is lexically scoped.
-tcSkolDFunType ty = tcInstType (\tvs -> return (tcSuperSkolTyVars tvs)) ty
+tcSkolDFunType ty
+  = do { (tvs, theta, rho, _) <- tcInstType (\tvs -> return (tcSuperSkolTyVars tvs)) ty
+       ; return (tvs, theta, rho) }
 
 tcSuperSkolTyVars :: [TyVar] -> (TvSubst, [TcTyVar])
 -- Make skolem constants, but do *not* give them new names, as above
@@ -255,7 +257,9 @@ tcInstSkolTyVars' isSuperSkol = mapAccumLM (tcInstSkolTyVar isSuperSkol)
 tcInstSkolType :: TcType -> TcM ([TcTyVar], TcThetaType, TcType)
 -- Instantiate a type with fresh skolem constants
 -- Binding location comes from the monad
-tcInstSkolType ty = tcInstType tcInstSkolTyVars ty
+tcInstSkolType ty
+  = do { (tvs, theta, rho, _) <- tcInstType tcInstSkolTyVars ty
+       ; return (tvs, theta, rho) }
 
 tcInstSigTyVars :: [TyVar] -> TcM (TvSubst, [TcTyVar])
 -- Make meta SigTv type variables for patten-bound scoped type varaibles

@@ -224,7 +224,7 @@ tcDefMeth clas tyvars this_dict binds_in hs_sig_fn prag_fn (sel_id, dm_info)
                  hs_ty       = lookupHsSig hs_sig_fn sel_name 
                                `orElse` pprPanic "tc_dm" (ppr sel_name)
 
-           ; local_dm_sig <- instTcTySig hs_ty local_dm_ty False local_dm_name
+           ; (local_dm_sig, _) <- instTcTySig hs_ty local_dm_ty False local_dm_name
            ; warnTc (not (null spec_prags))
                     (ptext (sLit "Ignoring SPECIALISE pragmas on default method") 
                      <+> quotes (ppr sel_name))

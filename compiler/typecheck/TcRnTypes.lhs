@@ -460,7 +460,10 @@ data TcLclEnv		-- Changes as we move inside an expression
                             -- All named wildcards with the same name within one signature
                             -- (TODOT scoped?) will be replaced by occurrences of the
                             -- same metavariable.
-        tcl_untch_wildcards :: Untouchables -- Touchables generated during wildcard desugaring
+        tcl_untch_wildcards :: Untouchables, -- Touchables generated during wildcard desugaring
+        tcl_tv_substs :: [TvSubst] -- Substitutions that keep track of the instantiated type
+                                   -- variables in the signatures. Wildcards can also unify
+                                   -- with these type variables.
     }
 
 -- TODOT better location
