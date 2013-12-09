@@ -518,7 +518,7 @@ tcPolyInfer mono closed tc_sig_fn prag_fn rec_tc bind_list
                           simplifyInfer closed mono name_taus (untch,wanted)
 
        ; theta <- zonkTcThetaType (map evVarPred givens)
-       ; exports <- checkNoErrs $ mapM (uncurry (mkExport prag_fn qtvs theta)) (zip mono_infos (repeat emptyTvSubst))
+       ; exports <- checkNoErrs $ mapM (mkExport prag_fn qtvs theta emptyTvSubst) mono_infos
 
        ; loc <- getSrcSpanM
        ; let poly_ids = map abe_poly exports
@@ -567,11 +567,12 @@ tcPolyCheckInfer mono closed sig@(TcSigInfo { sig_id = poly_id, sig_tvs = tvs_w_
                    , tcl_tv_substs = substs }) <- getLclEnv
        -- Add the touchables from the wildcard desugaring to the new touchables
        ; let untch' = addTouchableRange untch_wildcards untch
-       ; let name_taus = [(name, idType mono_id) | (name, _, mono_id) <- mono_infos]
+             name_taus = [(name, idType mono_id) | (name, _, mono_id) <- mono_infos]
+             subst = foldl1 unionTvSubst substs
        ; (qtvs, givens, mr_bites, ev_binds) <- 
                           simplifyInfer closed mono name_taus (untch', wanted)
        ; inferred_theta <- zonkTcThetaType (map evVarPred givens)
-       ; exports <- checkNoErrs $ mapM (uncurry (mkExport prag_fn qtvs inferred_theta)) (zip mono_infos substs)
+       ; exports <- checkNoErrs $ mapM (mkExport prag_fn qtvs inferred_theta subst) mono_infos
 
        ; loc <- getSrcSpanM
        ; let poly_ids = map abe_poly exports
@@ -590,8 +591,8 @@ tcPolyCheckInfer mono closed sig@(TcSigInfo { sig_id = poly_id, sig_tvs = tvs_w_
 --------------
 mkExport :: PragFun 
          -> [TyVar] -> TcThetaType      -- Both already zonked
-         -> MonoBindInfo
          -> TvSubst
+         -> MonoBindInfo
          -> TcM (ABExport Id)
 -- mkExport generates exports with 
 --      zonked type variables, 
@@ -604,7 +605,7 @@ mkExport :: PragFun
 
 -- Pre-condition: the qtvs and theta are already zonked
 
-mkExport prag_fn qtvs theta (poly_name, mb_sig, mono_id) subst
+mkExport prag_fn qtvs theta subst (poly_name, mb_sig, mono_id)
   = do  { mono_ty <- zonkTcType (idType mono_id)
         ; let poly_id  = case mb_sig of
                            Nothing  -> mkLocalId poly_name inferred_poly_ty
@@ -622,10 +623,12 @@ mkExport prag_fn qtvs theta (poly_name, mb_sig, mono_id) subst
         ; poly_id <- zonkId poly_id
 
         -- Quantify over leftover wildcard vars, i.e. generalise over the wildcards
-        ; let (wildcard_tvs, ann_theta, ann_tau) = tcSplitSigmaTy (idType poly_id)
-              substitutedTyVarsAsTys = substTyVars subst wildcard_tvs
+        ; let (tvs, ann_theta, ann_tau) = tcSplitSigmaTy (idType poly_id)
+              wildcard_tvs = tyVarsOfType (idType poly_id)
+              substitutedTyVarsAsTys = substTyVars subst tvs
               substitutedTyVars = map (tcGetTyVar "a type variable") substitutedTyVarsAsTys -- TODOT msg
-              poly_id_type = mkSigmaTy substitutedTyVars (substTheta subst ann_theta) (substTy subst ann_tau)
+              poly_id_type = mkSigmaTy (varSetElems $ wildcard_tvs `unionVarSet` mkVarSet substitutedTyVars)
+                             (substTheta subst ann_theta) (substTy subst ann_tau)
                -- Only in case of a partial type signature
               poly_id' = if isJust mb_sig then setIdType poly_id poly_id_type else poly_id
         ; poly_id' <- addInlinePrags poly_id' prag_sigs
