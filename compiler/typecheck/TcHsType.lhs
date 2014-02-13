@@ -476,7 +476,7 @@ tc_hs_type hs_ty@(HsTyLit tl) exp_kind = do
   return ty
 
 
-tc_hs_type HsWildcardTy (EK k _) = newWildcardTy k
+tc_hs_type HsWildcardTy (EK k _) = newWildcardTy Nothing k
 
 tc_hs_type (HsNamedWildcardTy name) (EK k _) = tcMetaTyVarForNwc name k
 

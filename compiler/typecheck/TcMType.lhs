@@ -312,13 +312,18 @@ newMetaTyVar :: MetaInfo -> Kind -> TcM TcTyVar
 -- Make a new meta tyvar out of thin air
 newMetaTyVar meta_info kind
   = do	{ uniq <- newMetaUnique
- 	; ref <- newMutVar Flexi
         ; let name = mkTcTyVarName uniq s
               s = case meta_info of
                         TauTv True  -> fsLit "tw"
                         TauTv False -> fsLit "t"
                         TcsTv       -> fsLit "u"
                         SigTv       -> fsLit "a"
+	; newNamedMetaTyVar name meta_info kind }
+
+newNamedMetaTyVar :: Name -> MetaInfo -> Kind -> TcM TcTyVar
+-- Make a new meta tyvar out of thin air
+newNamedMetaTyVar name meta_info kind
+  = do	{ ref <- newMutVar Flexi
 	; return (mkTcTyVar name kind (MetaTv meta_info ref)) }
 
 mkTcTyVarName :: Unique -> FastString -> Name
@@ -584,12 +589,25 @@ skolemiseUnboundMetaTyVar tv details
                                  -- ie where we are generalising
         ; uniq <- newUnique      -- Remove it from TcMetaTyVar unique land
         ; kind <- zonkTcKind (tyVarKind tv)
-        ; let final_kind = defaultKind kind
-              final_name = mkInternalName uniq (getOccName tv) span
+        ; let tv_name = getOccName tv
+              new_tv_name = if isWildcardVar tv
+                            then generaliseWildcardVarName tv_name
+                            else tv_name
+              final_name = mkInternalName uniq new_tv_name span
+              final_kind = defaultKind kind
               final_tv   = mkTcTyVar final_name final_kind details
 
         ; writeMetaTyVar tv (mkTyVarTy final_tv)
         ; return final_tv }
+  where
+    -- if a wildcard type called _a is generalised, we rename it to tw_a
+    generaliseWildcardVarName :: OccName -> OccName
+    generaliseWildcardVarName name =
+        let nameFS = occNameFS name
+            mkRes newName = mkOccNameFS (occNameSpace name) newName
+        in if headFS nameFS == '_'
+           then mkRes (appendFS (fsLit "tw") nameFS)
+           else mkRes nameFS
 
 skolemiseSigTv :: TcTyVar -> TcM TcTyVar
 -- In TcBinds we create SigTvs for type signatures
@@ -1886,12 +1904,13 @@ is irreducible. See Trac #5581.
 
 \begin{code}
 
-newWildcardVar :: Kind -> TcM TcTyVar
-newWildcardVar kind = newMetaTyVar (TauTv True) kind
+newWildcardVar :: Maybe Name -> Kind -> TcM TcTyVar
+newWildcardVar Nothing kind = newMetaTyVar (TauTv True) kind
+newWildcardVar (Just name) kind = newNamedMetaTyVar name (TauTv True) kind
 
-newWildcardTy  :: Kind -> TcM TcType
-newWildcardTy kind = do
-    tc_tyvar <- newWildcardVar kind
+newWildcardTy  :: Maybe Name -> Kind -> TcM TcType
+newWildcardTy name kind = do
+    tc_tyvar <- newWildcardVar name kind
     return (TyVarTy tc_tyvar)
 
 -- Get the meta type variable that will replace the named wildcard
@@ -1905,7 +1924,7 @@ tcMetaTyVarForNwc name k =
      ; nwc_map <- readMutVar nwc_map_ref
      ; case lookupNamedWildcard name nwc_map of -- TODOT check kind?
        Just ty -> return ty
-       Nothing -> do { metaTyVarTy <- newWildcardTy k
+       Nothing -> do { metaTyVarTy <- newWildcardTy (Just name) k
                      ; updMutVar nwc_map_ref (insertNamedWildcard name metaTyVarTy)
                      ; return metaTyVarTy
                      } }

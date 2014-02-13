@@ -409,13 +409,14 @@ kind_var_occ = mkOccName tvName "k"
 \begin{code}
 pprTcTyVarDetails :: TcTyVarDetails -> SDoc
 -- For debugging
-pprTcTyVarDetails (SkolemTv True)      = ptext (sLit "ssk")
-pprTcTyVarDetails (SkolemTv False)     = ptext (sLit "sk")
-pprTcTyVarDetails (RuntimeUnk {})      = ptext (sLit "rt")
-pprTcTyVarDetails (FlatSkol {})        = ptext (sLit "fsk")
-pprTcTyVarDetails (MetaTv (TauTv _) _) = ptext (sLit "tau")
-pprTcTyVarDetails (MetaTv TcsTv _)     = ptext (sLit "tcs")
-pprTcTyVarDetails (MetaTv SigTv _)     = ptext (sLit "sig")
+pprTcTyVarDetails (SkolemTv True)          = ptext (sLit "ssk")
+pprTcTyVarDetails (SkolemTv False)         = ptext (sLit "sk")
+pprTcTyVarDetails (RuntimeUnk {})          = ptext (sLit "rt")
+pprTcTyVarDetails (FlatSkol {})            = ptext (sLit "fsk")
+pprTcTyVarDetails (MetaTv (TauTv True) _)  = ptext (sLit "twc")
+pprTcTyVarDetails (MetaTv (TauTv False) _) = ptext (sLit "tau")
+pprTcTyVarDetails (MetaTv TcsTv _)         = ptext (sLit "tcs")
+pprTcTyVarDetails (MetaTv SigTv _)         = ptext (sLit "sig")
 
 pprUserTypeCtxt :: UserTypeCtxt -> SDoc
 pprUserTypeCtxt (InfSigCtxt n)    = ptext (sLit "the inferred type for") <+> quotes (ppr n)
