@@ -602,12 +602,10 @@ skolemiseUnboundMetaTyVar tv details
   where
     -- if a wildcard type called _a is generalised, we rename it to tw_a
     generaliseWildcardVarName :: OccName -> OccName
-    generaliseWildcardVarName name =
-        let nameFS = occNameFS name
-            mkRes newName = mkOccNameFS (occNameSpace name) newName
-        in if headFS nameFS == '_'
-           then mkRes (appendFS (fsLit "tw") nameFS)
-           else mkRes nameFS
+    generaliseWildcardVarName name
+      | startsWithUnderscore name = mkOccNameFS (occNameSpace name)
+                                      (appendFS (fsLit "tw") (occNameFS name))
+    generaliseWildcardVarName name = name
 
 skolemiseSigTv :: TcTyVar -> TcM TcTyVar
 -- In TcBinds we create SigTvs for type signatures
