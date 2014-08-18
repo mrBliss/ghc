@@ -1,0 +1,47 @@
+TYPE SIGNATURES
+  test3 :: Bool -> Bool
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+ScopedNamedWildcards.hs:5:10: Warning:
+    Found hole ‘_’ with type: Bool -> Bool
+    In the type signature for ‘test3’: _
+
+ScopedNamedWildcards.hs:6:27: Warning:
+    Found hole ‘_b’ with type: Bool
+    Relevant bindings include
+      x :: Bool (bound at ScopedNamedWildcards.hs:6:7)
+      test3 :: Bool -> Bool (bound at ScopedNamedWildcards.hs:6:1)
+    In the type signature for ‘x’: _b
+    In the first argument of ‘const’, namely
+      ‘(let
+          x :: _b
+          x = True
+        in False)’
+    In the expression:
+      const
+        (let
+           x :: _b
+           x = True
+         in False)
+
+ScopedNamedWildcards.hs:8:27: Warning:
+    Found hole ‘_b’ with type: Char
+    Relevant bindings include
+      x :: Bool (bound at ScopedNamedWildcards.hs:6:7)
+      test3 :: Bool -> Bool (bound at ScopedNamedWildcards.hs:6:1)
+    In the type signature for ‘x’: _b
+    In the first argument of ‘const’, namely
+      ‘(let
+          x :: _b
+          x = 'a'
+        in True)’
+    In the expression:
+      const
+        (let
+           x :: _b
+           x = 'a'
+         in True)

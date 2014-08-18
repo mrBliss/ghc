@@ -1,0 +1,38 @@
+TYPE SIGNATURES
+  foo :: Bool -> Char
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+ScopedNamedWildcardsGood.hs:9:8: Warning:
+    Found hole ‘_a’ with type: Bool
+    In the type signature for ‘foo’: _a -> _
+
+ScopedNamedWildcardsGood.hs:9:14: Warning:
+    Found hole ‘_’ with type: Char
+    In the type signature for ‘foo’: _a -> _
+
+ScopedNamedWildcardsGood.hs:11:18: Warning:
+    Found hole ‘_a’ with type: w_a
+    Where: ‘w_a’ is a rigid type variable bound by
+                 the inferred type of g :: w_a -> w_a
+                 at ScopedNamedWildcardsGood.hs:12:13
+    Relevant bindings include
+      x :: Bool (bound at ScopedNamedWildcardsGood.hs:10:5)
+      foo :: Bool -> Char (bound at ScopedNamedWildcardsGood.hs:10:1)
+    In the type signature for ‘g’: _a -> _a
+    In the expression:
+      let
+        v = not x
+        g :: _a -> _a
+        g x = x
+      in (g 'x')
+    In an equation for ‘foo’:
+        foo x
+          = let
+              v = not x
+              g :: _a -> _a
+              ....
+            in (g 'x')

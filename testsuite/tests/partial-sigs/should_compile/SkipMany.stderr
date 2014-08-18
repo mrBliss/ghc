@@ -1,0 +1,40 @@
+TYPE SIGNATURES
+  skipMany ::
+    forall tok st a. GenParser tok st a -> GenParser tok st ()
+  skipMany' ::
+    forall tok st a. GenParser tok st a -> GenParser tok st ()
+TYPE CONSTRUCTORS
+  data GenParser tok st a = GenParser tok st a
+    Promotable
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+SkipMany.hs:9:13: Warning:
+    Found hole ‘_’ with type: GenParser tok st a
+    Where: ‘tok’ is a rigid type variable bound by
+                 the inferred type of
+                 skipMany :: GenParser tok st a -> GenParser tok st ()
+                 at SkipMany.hs:10:1
+           ‘st’ is a rigid type variable bound by
+                the inferred type of
+                skipMany :: GenParser tok st a -> GenParser tok st ()
+                at SkipMany.hs:10:1
+           ‘a’ is a rigid type variable bound by
+               the inferred type of
+               skipMany :: GenParser tok st a -> GenParser tok st ()
+               at SkipMany.hs:10:1
+    In the type signature for ‘skipMany’: _ -> _ ()
+
+SkipMany.hs:9:18: Warning:
+    Found hole ‘_’ with type: GenParser tok st
+    Where: ‘tok’ is a rigid type variable bound by
+                 the inferred type of
+                 skipMany :: GenParser tok st a -> GenParser tok st ()
+                 at SkipMany.hs:10:1
+           ‘st’ is a rigid type variable bound by
+                the inferred type of
+                skipMany :: GenParser tok st a -> GenParser tok st ()
+                at SkipMany.hs:10:1
+    In the type signature for ‘skipMany’: _ -> _ ()

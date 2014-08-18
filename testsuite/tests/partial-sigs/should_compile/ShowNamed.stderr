@@ -1,0 +1,14 @@
+TYPE SIGNATURES
+  showTwo :: forall w_a. Show w_a => w_a -> String
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+ShowNamed.hs:4:17: Warning:
+    Found hole ‘_a’ with type: w_a
+    Where: ‘w_a’ is a rigid type variable bound by
+                 the inferred type of showTwo :: Show w_a => w_a -> String
+                 at ShowNamed.hs:5:1
+    In the type signature for ‘showTwo’: Show _a => _a -> String

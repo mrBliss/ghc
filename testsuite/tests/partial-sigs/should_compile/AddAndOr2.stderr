@@ -1,0 +1,15 @@
+TYPE SIGNATURES
+  addAndOr2 :: (Int, Bool) -> (Bool, Int) -> (Int, Bool)
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+AddAndOr2.hs:4:14: Warning:
+    Found hole ‘_’ with type: (Int, Bool)
+    In the type signature for ‘addAndOr2’: _ -> _
+
+AddAndOr2.hs:4:19: Warning:
+    Found hole ‘_’ with type: (Bool, Int) -> (Int, Bool)
+    In the type signature for ‘addAndOr2’: _ -> _

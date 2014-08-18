@@ -100,7 +100,7 @@
 	ignore = none
 [submodule "utils/haddock"]
 	path = utils/haddock
-	url = ../haddock.git
+	url = https://github.com/mrBliss/haddock.git
 	ignore = none
 	branch = ghc-head
 [submodule "nofib"]

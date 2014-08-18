@@ -1,0 +1,27 @@
+TYPE SIGNATURES
+  bar :: Bool -> Bool
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+ExpressionSigNamed.hs:4:8: Warning:
+    Found hole ‘_a’ with type: Bool
+    In the type signature for ‘bar’: _a -> _a
+
+ExpressionSigNamed.hs:5:23: Warning:
+    Found hole ‘_a’ with type: Bool
+    Relevant bindings include
+      bar :: Bool -> Bool (bound at ExpressionSigNamed.hs:5:1)
+    In an expression type signature: _a
+    In the expression: (False :: _a)
+    In an equation for ‘bar’: bar True = (False :: _a)
+
+ExpressionSigNamed.hs:6:22: Warning:
+    Found hole ‘_a’ with type: Bool
+    Relevant bindings include
+      bar :: Bool -> Bool (bound at ExpressionSigNamed.hs:5:1)
+    In an expression type signature: _a
+    In the expression: (True :: _a)
+    In an equation for ‘bar’: bar False = (True :: _a)

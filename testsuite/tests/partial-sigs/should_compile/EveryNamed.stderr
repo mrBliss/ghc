@@ -1,0 +1,14 @@
+TYPE SIGNATURES
+  every :: forall w_a. (w_a -> Bool) -> [w_a] -> Bool
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+EveryNamed.hs:4:11: Warning:
+    Found hole ‘_a’ with type: w_a
+    Where: ‘w_a’ is a rigid type variable bound by
+                 the inferred type of every :: (w_a -> Bool) -> [w_a] -> Bool
+                 at EveryNamed.hs:5:1
+    In the type signature for ‘every’: (_a -> Bool) -> [_a] -> Bool

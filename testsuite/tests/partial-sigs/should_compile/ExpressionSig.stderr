@@ -1,0 +1,16 @@
+TYPE SIGNATURES
+  bar :: Bool -> Bool
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+ExpressionSig.hs:5:15: Warning:
+    Found hole ‘_’ with type: Bool
+    Relevant bindings include
+      x :: Bool (bound at ExpressionSig.hs:5:5)
+      bar :: Bool -> Bool (bound at ExpressionSig.hs:5:1)
+    In an expression type signature: _
+    In the expression: (x :: _)
+    In an equation for ‘bar’: bar x = (x :: _)

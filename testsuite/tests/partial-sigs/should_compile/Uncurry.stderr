@@ -1,0 +1,49 @@
+TYPE SIGNATURES
+  unc :: forall w_ w_1 w_2. (w_1 -> w_2 -> w_) -> (w_1, w_2) -> w_
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+Uncurry.hs:4:9: Warning:
+    Found hole ‘_’ with type: w_1
+    Where: ‘w_1’ is a rigid type variable bound by
+                 the inferred type of unc :: (w_1 -> w_2 -> w_) -> (w_1, w_2) -> w_
+                 at Uncurry.hs:5:1
+    In the type signature for ‘unc’: (_ -> _ -> _) -> (_, _) -> _
+
+Uncurry.hs:4:14: Warning:
+    Found hole ‘_’ with type: w_2
+    Where: ‘w_2’ is a rigid type variable bound by
+                 the inferred type of unc :: (w_1 -> w_2 -> w_) -> (w_1, w_2) -> w_
+                 at Uncurry.hs:5:1
+    In the type signature for ‘unc’: (_ -> _ -> _) -> (_, _) -> _
+
+Uncurry.hs:4:19: Warning:
+    Found hole ‘_’ with type: w_
+    Where: ‘w_’ is a rigid type variable bound by
+                the inferred type of unc :: (w_1 -> w_2 -> w_) -> (w_1, w_2) -> w_
+                at Uncurry.hs:5:1
+    In the type signature for ‘unc’: (_ -> _ -> _) -> (_, _) -> _
+
+Uncurry.hs:4:26: Warning:
+    Found hole ‘_’ with type: w_1
+    Where: ‘w_1’ is a rigid type variable bound by
+                 the inferred type of unc :: (w_1 -> w_2 -> w_) -> (w_1, w_2) -> w_
+                 at Uncurry.hs:5:1
+    In the type signature for ‘unc’: (_ -> _ -> _) -> (_, _) -> _
+
+Uncurry.hs:4:29: Warning:
+    Found hole ‘_’ with type: w_2
+    Where: ‘w_2’ is a rigid type variable bound by
+                 the inferred type of unc :: (w_1 -> w_2 -> w_) -> (w_1, w_2) -> w_
+                 at Uncurry.hs:5:1
+    In the type signature for ‘unc’: (_ -> _ -> _) -> (_, _) -> _
+
+Uncurry.hs:4:35: Warning:
+    Found hole ‘_’ with type: w_
+    Where: ‘w_’ is a rigid type variable bound by
+                the inferred type of unc :: (w_1 -> w_2 -> w_) -> (w_1, w_2) -> w_
+                at Uncurry.hs:5:1
+    In the type signature for ‘unc’: (_ -> _ -> _) -> (_, _) -> _

@@ -33,7 +33,7 @@ import Var
 import VarSet
 import VarEnv
 import Bag
-import ErrUtils         ( ErrMsg, makeIntoWarning, pprLocErrMsg )
+import ErrUtils         ( ErrMsg, makeIntoWarning, pprLocErrMsg, isWarning )
 import BasicTypes
 import Util
 import FastString
@@ -248,8 +248,8 @@ reportFlats ctxt flats    -- Here 'flats' includes insolble goals
       [ -- First deal with things that are utterly wrong
         -- Like Int ~ Bool (incl nullary TyCons)
         -- or  Int ~ t a   (AppTy on one side)
-        ("Utterly wrong",  utterly_wrong,   True, mkGroupReporter mkEqErr)
-      , ("Holes",          is_hole,         True, mkHoleReporter mkHoleError)
+        ("Utterly wrong",  utterly_wrong,   True,  mkGroupReporter mkEqErr)
+      , ("Holes",          is_hole,         False, mkHoleReporter mkHoleError)
 
         -- Report equalities of form (a~ty).  They are usually
         -- skolem-equalities, and they cause confusing knock-on
@@ -365,6 +365,8 @@ reportGroup mk_err ctxt cts
 
 maybeReportHoleError :: ReportErrCtxt -> ErrMsg -> TcM ()
 maybeReportHoleError ctxt err
+  | isWarning err
+  = reportWarning err
   | cec_defer_holes ctxt
   = when (cec_warn_holes ctxt)
             (reportWarning (makeIntoWarning err))
@@ -401,7 +403,7 @@ addDeferredBinding ctxt err ct
 
 maybeAddDeferredHoleBinding :: ReportErrCtxt -> ErrMsg -> Ct -> TcM ()
 maybeAddDeferredHoleBinding ctxt err ct
-    | cec_defer_holes ctxt
+    | cec_defer_holes ctxt && isTypedHoleCt ct
     = addDeferredBinding ctxt err ct
     | otherwise
     = return ()
@@ -563,15 +565,22 @@ mkIrredErr ctxt cts
 ----------------
 mkHoleError :: ReportErrCtxt -> Ct -> TcM ErrMsg
 mkHoleError ctxt ct@(CHoleCan { cc_occ = occ })
-  = do { let tyvars = varSetElems (tyVarsOfCt ct)
+  = do { partial_sigs <- xoptM Opt_PartialTypeSignatures
+       ; let tyvars = varSetElems (tyVarsOfCt ct)
              tyvars_msg = map loc_msg tyvars
              msg = vcat [ hang (ptext (sLit "Found hole") <+> quotes (ppr occ))
                              2 (ptext (sLit "with type:") <+> pprType (ctEvPred (ctEvidence ct)))
-                        , ppUnless (null tyvars_msg) (ptext (sLit "Where:") <+> vcat tyvars_msg) ]
+                        , ppUnless (null tyvars_msg) (ptext (sLit "Where:") <+> vcat tyvars_msg)
+                        , if in_typesig && not partial_sigs then pts_hint else empty ]
        ; (ctxt, binds_doc) <- relevantBindings False ctxt ct
                -- The 'False' means "don't filter the bindings; see Trac #8191
-       ; mkErrorMsg ctxt ct (msg $$ binds_doc) }
+       ; errMsg <- mkErrorMsg ctxt ct (msg $$ binds_doc)
+       ; if in_typesig && partial_sigs
+           then return $ makeIntoWarning errMsg
+           else return errMsg }
   where
+    in_typesig = not $ isTypedHoleCt ct
+    pts_hint = ptext (sLit "To use the inferred type, enable PartialTypeSignatures")
     loc_msg tv
        = case tcTyVarDetails tv of
           SkolemTv {} -> quotes (ppr tv) <+> skol_msg
@@ -1320,7 +1329,7 @@ quickFlattenTy (TyConApp tc tys)
     | otherwise
     = do { let (funtys,resttys) = splitAt (tyConArity tc) tys
                 -- Ignore the arguments of the type family funtys
-         ; v <- newMetaTyVar TauTv (typeKind (TyConApp tc funtys))
+         ; v <- newMetaTyVar (TauTv False) (typeKind (TyConApp tc funtys))
          ; flat_resttys <- mapM quickFlattenTy resttys
          ; return (foldl AppTy (mkTyVarTy v) flat_resttys) }
 \end{code}

@@ -1,0 +1,19 @@
+TYPE SIGNATURES
+  foo :: (forall a. [a] -> [a]) -> ([Bool], [Char])
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+HigherRank2.hs:4:35: Warning:
+    Found hole ‘_’ with type: [Bool]
+    In the type signature for ‘foo’: (forall a. [a] -> [a]) -> (_, _ _)
+
+HigherRank2.hs:4:38: Warning:
+    Found hole ‘_’ with type: []
+    In the type signature for ‘foo’: (forall a. [a] -> [a]) -> (_, _ _)
+
+HigherRank2.hs:4:40: Warning:
+    Found hole ‘_’ with type: Char
+    In the type signature for ‘foo’: (forall a. [a] -> [a]) -> (_, _ _)

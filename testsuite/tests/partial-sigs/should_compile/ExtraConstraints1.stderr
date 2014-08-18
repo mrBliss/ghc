@@ -1,0 +1,33 @@
+TYPE SIGNATURES
+  arbitCs1 :: forall a. (Enum a, Eq a, Show a) => a -> String
+  arbitCs2 :: forall a. (Show a, Enum a, Eq a) => a -> String
+  arbitCs3 :: forall a. (Show a, Enum a, Eq a) => a -> String
+  arbitCs4 :: forall a. (Eq a, Enum a, Show a) => a -> String
+  arbitCs5 :: forall a. (Eq a, Enum a, Show a) => a -> String
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+ExtraConstraints1.hs:4:13: Warning:
+    Found hole ‘_’ with inferred constraints: (Enum a, Eq a, Show a)
+    In the type signature for ‘arbitCs1’: _ => a -> String
+
+ExtraConstraints1.hs:7:22: Warning:
+    Found hole ‘_’ with inferred constraints: (Enum a, Eq a)
+    In the type signature for ‘arbitCs2’: (Show a, _) => a -> String
+
+ExtraConstraints1.hs:10:30: Warning:
+    Found hole ‘_’ with inferred constraints: (Eq a)
+    In the type signature for ‘arbitCs3’:
+      (Show a, Enum a, _) => a -> String
+
+ExtraConstraints1.hs:13:20: Warning:
+    Found hole ‘_’ with inferred constraints: (Enum a, Show a)
+    In the type signature for ‘arbitCs4’: (Eq a, _) => a -> String
+
+ExtraConstraints1.hs:16:36: Warning:
+    Found hole ‘_’ with inferred constraints: ()
+    In the type signature for ‘arbitCs5’:
+      (Eq a, Enum a, Show a, _) => a -> String

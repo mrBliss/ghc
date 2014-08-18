@@ -621,6 +621,8 @@ data ExtensionFlag
    | Opt_NegativeLiterals
    | Opt_EmptyCase
    | Opt_PatternSynonyms
+   | Opt_PartialTypeSignatures
+   | Opt_NamedWildcards
    deriving (Eq, Enum, Show)
 
 data SigOf = NotSigOf
@@ -2972,6 +2974,7 @@ xFlags = [
   flagSpec ( "MultiWayIf",                       Opt_MultiWayIf, nop ),
   flagSpec ( "NPlusKPatterns",                   Opt_NPlusKPatterns, nop ),
   flagSpec ( "NamedFieldPuns",                   Opt_RecordPuns, nop ),
+  flagSpec ( "NamedWildcards",                   Opt_NamedWildcards, nop ),
   flagSpec ( "NegativeLiterals",                 Opt_NegativeLiterals, nop ),
   flagSpec ( "NondecreasingIndentation",         Opt_NondecreasingIndentation, nop ),
   flagSpec ( "NullaryTypeClasses",               Opt_NullaryTypeClasses,
@@ -2983,6 +2986,7 @@ xFlags = [
   flagSpec ( "PackageImports",                   Opt_PackageImports, nop ),
   flagSpec ( "ParallelArrays",                   Opt_ParallelArrays, nop ),
   flagSpec ( "ParallelListComp",                 Opt_ParallelListComp, nop ),
+  flagSpec ( "PartialTypeSignatures",            Opt_PartialTypeSignatures, nop ),
   flagSpec ( "PatternGuards",                    Opt_PatternGuards, nop ),
   flagSpec ( "PatternSignatures",                Opt_ScopedTypeVariables,
                                 deprecatedForExtension "ScopedTypeVariables" ),

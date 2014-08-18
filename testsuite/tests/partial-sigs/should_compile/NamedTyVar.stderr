@@ -1,0 +1,19 @@
+TYPE SIGNATURES
+  foo :: forall b a. (a, b) -> (a, b)
+TYPE CONSTRUCTORS
+COERCION AXIOMS
+Dependent modules: []
+Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
+                     integer-gmp-1.0.0.0]
+
+NamedTyVar.hs:4:9: Warning:
+    Found hole ‘_a’ with type: a
+    Where: ‘a’ is a rigid type variable bound by
+               the inferred type of foo :: (a, b) -> (a, b) at NamedTyVar.hs:4:8
+    In the type signature for ‘foo’: (_a, b) -> (a, _b)
+
+NamedTyVar.hs:4:23: Warning:
+    Found hole ‘_b’ with type: b
+    Where: ‘b’ is a rigid type variable bound by
+               the inferred type of foo :: (a, b) -> (a, b) at NamedTyVar.hs:4:8
+    In the type signature for ‘foo’: (_a, b) -> (a, _b)
