@@ -5,17 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-Every.hs:4:10: Warning:
-    Found hole ‘_’ with type: t -> Bool
-    Where: ‘t’ is a rigid type variable bound by
-               the inferred type of every :: (t -> Bool) -> [t] -> Bool
-               at Every.hs:5:1
-    In the type signature for ‘every’: _ -> _ -> Bool
-
-Every.hs:4:15: Warning:
-    Found hole ‘_’ with type: [t]
-    Where: ‘t’ is a rigid type variable bound by
-               the inferred type of every :: (t -> Bool) -> [t] -> Bool
-               at Every.hs:5:1
-    In the type signature for ‘every’: _ -> _ -> Bool

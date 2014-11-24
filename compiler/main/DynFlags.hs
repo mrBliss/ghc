@@ -503,6 +503,7 @@ data WarningFlag =
    | Opt_WarnUnsupportedLlvmVersion
    | Opt_WarnInlineRuleShadowing
    | Opt_WarnTypedHoles
+   | Opt_WarnHolesInTypes
    | Opt_WarnMissingExportedSigs
    deriving (Eq, Show, Enum)
 
@@ -2726,6 +2727,7 @@ fWarningFlags = [
   flagSpec ( "warn-tabs",                        Opt_WarnTabs, nop ),
   flagSpec ( "warn-type-defaults",               Opt_WarnTypeDefaults, nop ),
   flagSpec ( "warn-typed-holes",                 Opt_WarnTypedHoles, nop ),
+  flagSpec ( "warn-holes-in-types",              Opt_WarnHolesInTypes, nop ),
   flagSpec ( "warn-unrecognised-pragmas",        Opt_WarnUnrecognisedPragmas, nop ),
   flagSpec ( "warn-unsafe",                      Opt_WarnUnsafe, setWarnUnsafe ),
   flagSpec ( "warn-unsupported-calling-conventions", Opt_WarnUnsupportedCallingConventions, nop ),
@@ -3179,6 +3181,7 @@ standardWarnings -- see Note [Documenting warning flags]
         Opt_WarnWarningsDeprecations,
         Opt_WarnDeprecatedFlags,
         Opt_WarnTypedHoles,
+        Opt_WarnHolesInTypes,
         Opt_WarnUnrecognisedPragmas,
         Opt_WarnPointlessPragmas,
         Opt_WarnDuplicateConstraints,

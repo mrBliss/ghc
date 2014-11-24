@@ -5,7 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-LocalDefinitionBug.hs:5:45: Warning:
-    Found hole ‘_’ with type: String
-    In the type signature for ‘monoLoc’: a -> ((a, String), (a, _))

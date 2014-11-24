@@ -102,8 +102,9 @@ reportUnsolved wanted
        ; defer_errors <- goptM Opt_DeferTypeErrors
        ; defer_holes <- goptM Opt_DeferTypedHoles
        ; warn_holes <- woptM Opt_WarnTypedHoles
+       ; warn_holes_in_types <- woptM Opt_WarnHolesInTypes
        ; report_unsolved (Just binds_var) defer_errors defer_holes
-             warn_holes wanted
+             warn_holes warn_holes_in_types wanted
        ; getTcEvBinds binds_var }
 
 reportAllUnsolved :: WantedConstraints -> TcM ()
@@ -111,17 +112,20 @@ reportAllUnsolved :: WantedConstraints -> TcM ()
 -- See Note [Deferring coercion errors to runtime]
 reportAllUnsolved wanted = do
     warn_holes <- woptM Opt_WarnTypedHoles
-    report_unsolved Nothing False False warn_holes wanted
+    warn_holes_in_types <- woptM Opt_WarnHolesInTypes
+    report_unsolved Nothing False False warn_holes warn_holes_in_types wanted
 
 report_unsolved :: Maybe EvBindsVar  -- cec_binds
                 -> Bool              -- cec_defer_type_errors
                 -> Bool              -- cec_defer_holes
                 -> Bool              -- cec_warn_holes
+                -> Bool              -- cec_warn_holes_in_types
                 -> WantedConstraints -> TcM ()
 -- Important precondition:
 -- WantedConstraints are fully zonked and unflattened, that is,
 -- zonkWC has already been applied to these constraints.
-report_unsolved mb_binds_var defer_errors defer_holes  warn_holes wanted
+report_unsolved mb_binds_var defer_errors defer_holes warn_holes
+                warn_holes_in_types wanted
   | isEmptyWC wanted
   = return ()
   | otherwise
@@ -138,6 +142,7 @@ report_unsolved mb_binds_var defer_errors defer_holes  warn_holes wanted
                             , cec_defer_type_errors = defer_errors
                             , cec_defer_holes = defer_holes
                             , cec_warn_holes = warn_holes
+                            , cec_warn_holes_in_types = warn_holes_in_types
                             , cec_suppress = False -- See Note [Suppressing error messages]
                             , cec_binds    = mb_binds_var }
 
@@ -171,7 +176,10 @@ data ReportErrCtxt
                                         -- Irrelevant if cec_binds = Nothing
 
           , cec_warn_holes :: Bool  -- True <=> -fwarn-typed-holes
-                                    -- Controls whether holes produce warnings
+                                    -- Controls whether typed holes produce warnings
+          , cec_warn_holes_in_types :: Bool  -- True <=> -fwarn-holes-in-types
+                                             -- Controls whether holes in partial type
+                                             -- signatures produce warnings
           , cec_suppress :: Bool    -- True <=> More important errors have occurred,
                                     --          so create bindings if need be, but
                                     --          don't issue any more errors/warnings
@@ -365,8 +373,11 @@ reportGroup mk_err ctxt cts
 
 maybeReportHoleError :: ReportErrCtxt -> ErrMsg -> TcM ()
 maybeReportHoleError ctxt err
+  -- When -XPartialTypeSignatures is one, warnings (instead of errors) are
+  -- generated for holes in partial type signature.
   | isWarning err
-  = reportWarning err
+  = when (cec_warn_holes_in_types ctxt)
+            (reportWarning err)
   | cec_defer_holes ctxt
   = when (cec_warn_holes ctxt)
             (reportWarning (makeIntoWarning err))

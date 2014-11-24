@@ -5,9 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-SimpleGen.hs:4:8: Warning:
-    Found hole ‘_’ with type: w_
-    Where: ‘w_’ is a rigid type variable bound by
-                the inferred type of bar :: w_ -> Bool at SimpleGen.hs:5:1
-    In the type signature for ‘bar’: _ -> Bool

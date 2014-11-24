@@ -5,39 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-AddAndOr4.hs:4:15: Warning:
-    Found hole ‘_’ with type: (,)
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:17: Warning:
-    Found hole ‘_’ with type: Int
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:19: Warning:
-    Found hole ‘_’ with type: Bool
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:26: Warning:
-    Found hole ‘_’ with type: (,)
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:28: Warning:
-    Found hole ‘_’ with type: Bool
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:30: Warning:
-    Found hole ‘_’ with type: Int
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:37: Warning:
-    Found hole ‘_’ with type: (,)
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:39: Warning:
-    Found hole ‘_’ with type: Int
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _
-
-AddAndOr4.hs:4:41: Warning:
-    Found hole ‘_’ with type: Bool
-    In the type signature for ‘addAndOr4’: _ _ _ -> _ _ _ -> _ _ _

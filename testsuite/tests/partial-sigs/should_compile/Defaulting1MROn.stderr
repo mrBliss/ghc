@@ -5,7 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-Defaulting1MROn.hs:5:10: Warning:
-    Found hole ‘_’ with type: Integer
-    In the type signature for ‘alpha’: _

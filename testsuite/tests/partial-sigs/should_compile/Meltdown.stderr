@@ -16,17 +16,3 @@ INSTANCES
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-Meltdown.hs:23:19: Warning:
-    Found hole ‘_nm’ with type: NukeMonad param1 param2
-    Where: ‘param1’ is a rigid type variable bound by
-                    the inferred type of
-                    unlessMeltdown :: NukeMonad param1 param2 ()
-                                      -> NukeMonad param1 param2 ()
-                    at Meltdown.hs:24:1
-           ‘param2’ is a rigid type variable bound by
-                    the inferred type of
-                    unlessMeltdown :: NukeMonad param1 param2 ()
-                                      -> NukeMonad param1 param2 ()
-                    at Meltdown.hs:24:1
-    In the type signature for ‘unlessMeltdown’: _nm () -> _nm ()

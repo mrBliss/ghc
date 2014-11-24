@@ -5,7 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-GenNamed.hs:4:8: Warning:
-    Found hole ‘_a’ with type: Bool
-    In the type signature for ‘bar’: _a -> _a

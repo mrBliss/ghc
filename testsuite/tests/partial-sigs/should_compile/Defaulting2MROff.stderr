@@ -5,14 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-Defaulting2MROff.hs:5:10: Warning:
-    Found hole ‘_’ with inferred constraints: (Num w_)
-    In the type signature for ‘bravo’: _ => _
-
-Defaulting2MROff.hs:5:15: Warning:
-    Found hole ‘_’ with type: w_
-    Where: ‘w_’ is a rigid type variable bound by
-                the inferred type of bravo :: Num w_ => w_
-                at Defaulting2MROff.hs:6:1
-    In the type signature for ‘bravo’: _ => _

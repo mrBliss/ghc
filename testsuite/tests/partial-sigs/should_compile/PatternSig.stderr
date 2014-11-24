@@ -5,11 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-PatternSig.hs:5:11: Warning:
-    Found hole ‘_’ with type: Bool
-    Relevant bindings include
-      bar :: Bool -> Bool (bound at PatternSig.hs:5:1)
-    In a pattern type signature: _
-    In the pattern: x :: _
-    In an equation for ‘bar’: bar (x :: _) = True

@@ -5,27 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-UncurryNamed.hs:4:9: Warning:
-    Found hole ‘_a’ with type: w_a
-    Where: ‘w_a’ is a rigid type variable bound by
-                 the inferred type of
-                 unc :: (w_a -> w_b -> w_c) -> (w_a, w_b) -> w_c
-                 at UncurryNamed.hs:5:1
-    In the type signature for ‘unc’: (_a -> _b -> _c) -> (_a, _b) -> _c
-
-UncurryNamed.hs:4:15: Warning:
-    Found hole ‘_b’ with type: w_b
-    Where: ‘w_b’ is a rigid type variable bound by
-                 the inferred type of
-                 unc :: (w_a -> w_b -> w_c) -> (w_a, w_b) -> w_c
-                 at UncurryNamed.hs:5:1
-    In the type signature for ‘unc’: (_a -> _b -> _c) -> (_a, _b) -> _c
-
-UncurryNamed.hs:4:21: Warning:
-    Found hole ‘_c’ with type: w_c
-    Where: ‘w_c’ is a rigid type variable bound by
-                 the inferred type of
-                 unc :: (w_a -> w_b -> w_c) -> (w_a, w_b) -> w_c
-                 at UncurryNamed.hs:5:1
-    In the type signature for ‘unc’: (_a -> _b -> _c) -> (_a, _b) -> _c

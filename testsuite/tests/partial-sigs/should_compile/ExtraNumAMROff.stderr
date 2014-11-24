@@ -5,7 +5,3 @@ COERCION AXIOMS
 Dependent modules: []
 Dependent packages: [base-4.8.0.0, ghc-prim-0.3.1.0,
                      integer-gmp-1.0.0.0]
-
-ExtraNumAMROff.hs:5:8: Warning:
-    Found hole ‘_’ with inferred constraints: (Num a)
-    In the type signature for ‘foo’: _ => a

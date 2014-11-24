@@ -750,10 +750,12 @@ completeTheta inferred_theta
        ; let inferred_diff = minusList inferred_theta annotated_theta
              final_theta   = annotated_theta ++ inferred_diff
        ; partial_sigs <- xoptM Opt_PartialTypeSignatures
+       ; warn_holes_in_types <- woptM Opt_WarnHolesInTypes
        ; msg <- mkLongErrAt loc (mk_msg inferred_diff partial_sigs) empty
-       ; if partial_sigs
-         then reportWarning $ makeIntoWarning msg
-         else reportError msg
+       ; case partial_sigs of
+          True | warn_holes_in_types -> reportWarning $ makeIntoWarning msg
+               | otherwise           -> return ()
+          False                      -> reportError msg
        ; return final_theta }
 
   | otherwise
