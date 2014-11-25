@@ -749,13 +749,13 @@ completeTheta inferred_theta
   = do { annotated_theta <- zonkTcThetaType annotated_theta
        ; let inferred_diff = minusList inferred_theta annotated_theta
              final_theta   = annotated_theta ++ inferred_diff
-       ; partial_sigs <- xoptM Opt_PartialTypeSignatures
-       ; warn_holes_in_types <- woptM Opt_WarnHolesInTypes
+       ; partial_sigs      <- xoptM Opt_PartialTypeSignatures
+       ; warn_partial_sigs <- woptM Opt_WarnPartialTypeSignatures
        ; msg <- mkLongErrAt loc (mk_msg inferred_diff partial_sigs) empty
        ; case partial_sigs of
-          True | warn_holes_in_types -> reportWarning $ makeIntoWarning msg
-               | otherwise           -> return ()
-          False                      -> reportError msg
+           True | warn_partial_sigs -> reportWarning $ makeIntoWarning msg
+                | otherwise         -> return ()
+           False                    -> reportError msg
        ; return final_theta }
 
   | otherwise

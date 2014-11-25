@@ -1665,16 +1665,16 @@
           </row>
 
           <row>
-            <entry><option>-fwarn-holes-in-types</option></entry>
+            <entry><option>-fwarn-partial-type-signatures</option></entry>
             <entry>
-              warn about holes in type signatures when
+              warn about holes in partial type signatures when
               <option>-XPartialTypesignatures</option> is enabled. Not
               applicable when <option>-XPartialTypesignatures</option> is not
               enabled, in which case errors are generated for such holes.
               See <xref linkend="partial-type-signatures"/>.
             </entry>
             <entry>dynamic</entry>
-            <entry><option>-fno-warn-holes-in-types</option></entry>
+            <entry><option>-fno-warn-partial-type-signatures</option></entry>
           </row>
 
         </tbody>

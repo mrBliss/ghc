@@ -8561,7 +8561,7 @@ partial type signature, informing the programmer of the inferred type. When
 the <option>-XPartialTypeSignatures</option> flag is enabled, the type-checker
 will accept the inferred type for each hole, generating warnings instead of
 errors. Additionally, these warnings can be silenced with the
-<option>-fno-warn-holes-in-types</option> flag.
+<option>-fno-warn-partial-type-signatures</option> flag.
 </para>
 
 <sect2 id="pts-syntax">
