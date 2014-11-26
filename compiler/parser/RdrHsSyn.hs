@@ -50,6 +50,7 @@ module RdrHsSyn (
         checkValSig,          -- (SrcLoc, HsExp, HsRhs, [HsDecl]) -> P HsDecl
         checkPartialTypeSignature,
         checkNoPartialType,
+        checkValidPatSynSig,
         checkDoAndIfThenElse,
         checkRecordSyntax,
         checkValidDefaults,
@@ -973,6 +974,16 @@ checkValidDefaults :: [LHsType RdrName] -> P (DefaultDecl RdrName)
 checkValidDefaults tys = mapM_ (checkNoPartialType err) tys >> return ret
   where ret = DefaultDecl tys
         err = text "In declaration:" <+> ppr ret
+
+-- | Check that the pattern synonym type signature does not contain wildcards.
+checkValidPatSynSig :: Sig RdrName -> P (Sig RdrName)
+checkValidPatSynSig psig@(PatSynSig _ _ prov req ty)
+  = mapM_ (checkNoPartialType err) (unLoc prov ++ unLoc req ++ [ty])
+    >> return psig
+  where err = hang (text "In pattern synonym type signature: ")
+                   2 (ppr psig)
+checkValidPatSynSig sig = return sig
+-- Should only be called with a pattern synonym type signature
 
 -- | Check the validity of a partial type signature. We check the following
 -- things:

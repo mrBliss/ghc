@@ -1012,8 +1012,10 @@ where_decls :: { Located ([AddAnn]
                                           ,$3) }
 pattern_synonym_sig :: { LSig RdrName }
         : 'pattern' con '::' ptype
-            { let (flag, qtvs, prov, req, ty) = unLoc $4
-              in sLL $1 $> $ PatSynSig $2 (flag, mkHsQTvs qtvs) prov req ty }
+            {% do { let (flag, qtvs, prov, req, ty) = unLoc $4
+                  ; let sig = PatSynSig $2 (flag, mkHsQTvs qtvs) prov req ty
+                  ; checkValidPatSynSig sig
+                  ; return $ sLL $1 $> $ sig } }
 
 ptype :: { Located (HsExplicitFlag, [LHsTyVarBndr RdrName], LHsContext RdrName, LHsContext RdrName, LHsType RdrName) }
         : 'forall' tv_bndrs '.' ptype
