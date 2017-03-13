@@ -508,6 +508,9 @@ data TyClDecl name
 
   | ClassDecl { tcdCtxt    :: LHsContext name,          -- ^ Context...
                 tcdLName   :: Located name,             -- ^ Name of the class
+                tcdLDictTy :: Located name,             -- ^ Name of the dictionary type constructor
+                tcdLDictCon :: Located name,            -- ^ Name of the dictionary data constructor
+                tcdSCFields :: [FieldOcc name],         -- ^ Fields for the superclasses
                 tcdTyVars  :: LHsQTyVars name,          -- ^ Class type variables
                 tcdFixity  :: LexicalFixity, -- ^ Fixity used in the declaration
                 tcdFDs     :: [Located (FunDep (Located name))],

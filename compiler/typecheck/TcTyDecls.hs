@@ -63,6 +63,7 @@ import FV
 import Module
 
 import Control.Monad
+import Data.Char ( isDigit )
 
 {-
 ************************************************************************
@@ -819,9 +820,18 @@ mkRecSelBinds tycons
   = ValBindsOut binds sigs
   where
     (sigs, binds) = unzip rec_sels
+    is_sc_field (FieldLabel { flLabel = lbl, flIsOverloaded = True })
+      = parent == "parent" && not (null n) && all isDigit n -- TODOT make this more robust.
+     where (parent, n) = splitAt 6 (unpackFS lbl)  -- /parent\d+/
+    is_sc_field _ = False
     rec_sels = map mkRecSelBind [ (tc,fld)
                                 | tc <- tycons
-                                , fld <- tyConFieldLabels tc ]
+                                -- Don't make record selectors for dictionary
+                                -- records, they clash with the class methods.
+                                -- Do make superclass selectors parent1,
+                                -- parent2, ...
+                                , fld <- tyConFieldLabels tc
+                                , not (isDictTyCon tc) || is_sc_field fld ]
 
 mkRecSelBind :: (TyCon, FieldLabel) -> (LSig Name, (RecFlag, LHsBinds Name))
 mkRecSelBind (tycon, fl)

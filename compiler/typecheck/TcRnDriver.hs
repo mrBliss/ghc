@@ -910,9 +910,9 @@ checkBootTyCon is_boot tc1 tc2
 
   | Just c1 <- tyConClass_maybe tc1
   , Just c2 <- tyConClass_maybe tc2
-  , let (clas_tvs1, clas_fds1, sc_theta1, _, ats1, op_stuff1)
+  , let (clas_tvs1, clas_fds1, sc_theta1, _, ats1, op_stuff1, _)
           = classExtraBigSig c1
-        (clas_tvs2, clas_fds2, sc_theta2, _, ats2, op_stuff2)
+        (clas_tvs2, clas_fds2, sc_theta2, _, ats2, op_stuff2, _)
           = classExtraBigSig c2
   , Just env <- eqVarBndrs emptyRnEnv2 clas_tvs1 clas_tvs2
   = let

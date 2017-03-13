@@ -200,8 +200,14 @@ mkVarUnqual n = Unqual (mkVarOccFS n)
 
 -- | Make a qualified 'RdrName' in the given namespace and where the 'ModuleName' and
 -- the 'OccName' are taken from the first and second elements of the tuple respectively
+--
+-- TODOT update + what about M.Class.Dict?
 mkQual :: NameSpace -> (FastString, FastString) -> RdrName
-mkQual sp (m, n) = Qual (mkModuleNameFS m) (mkOccNameFS sp n)
+mkQual sp (m, n)
+  | n == fsLit "Dict"
+  = mkRdrUnqual $ mkOccNameFS sp (m `mappend` fsLit ".Dict")
+  | otherwise
+  = Qual (mkModuleNameFS m) (mkOccNameFS sp n)
 
 getRdrName :: NamedThing thing => thing -> RdrName
 getRdrName name = nameRdrName (getName name)

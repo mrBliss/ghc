@@ -136,6 +136,7 @@ import TysPrim
 import {-# SOURCE #-} KnownUniques
 
 -- others:
+import FamInstEnv       ( mkDictToClassCoAxiom )
 import CoAxiom
 import Id
 import Constants        ( mAX_TUPLE_SIZE, mAX_CTUPLE_SIZE, mAX_SUM_SIZE )
@@ -224,7 +225,9 @@ wiredInTyCons = [ -- Units are not treated like other tuples, because then
                 , maybeTyCon
                 , parrTyCon
                 , heqTyCon
+                -- , heqDictTyCon TODOT
                 , coercibleTyCon
+                -- , coercibleDictTyCon TODOT
                 , typeNatKindCon
                 , typeSymbolKindCon
                 , runtimeRepTyCon
@@ -252,18 +255,39 @@ mkWiredInIdName :: Module -> FastString -> Unique -> Id -> Name
 mkWiredInIdName mod fs uniq id
  = mkWiredInName mod (mkOccNameFS Name.varName fs) uniq (AnId id) UserSyntax
 
+mkWiredInCoAxiomName :: BuiltInSyntax -> Module -> FastString -> Unique -> CoAxiom Unbranched -> Name
+mkWiredInCoAxiomName built_in modu fs unique co
+  = mkWiredInName modu (mkTcOccFS fs) unique
+                  (ACoAxiom (toBranchedAxiom co))  -- Relevant CoAxiom
+                  built_in
+
+
 -- See Note [Kind-changing of (~) and Coercible]
 -- in libraries/ghc-prim/GHC/Types.hs
-heqTyConName, heqDataConName, heqSCSelIdName :: Name
-heqTyConName   = mkWiredInTyConName   UserSyntax gHC_TYPES (fsLit "~~")   heqTyConKey      heqTyCon
-heqDataConName = mkWiredInDataConName UserSyntax gHC_TYPES (fsLit "Eq#")  heqDataConKey heqDataCon
+heqTyConName, heqDictTyConName :: Name
+heqTyConName     = mkWiredInTyConName UserSyntax gHC_TYPES (fsLit "~~")      heqTyConKey      heqTyCon
+heqDictTyConName = mkWiredInTyConName UserSyntax gHC_TYPES (fsLit "~~.Dict") heqDictTyConKey  heqDictTyCon -- TODOT name?
+heqDataConName, heqDictDataConName :: Name
+heqDataConName     = mkWiredInDataConName UserSyntax gHC_TYPES (fsLit "Eq#")      heqDataConKey     heqDataCon
+heqDictDataConName = mkWiredInDataConName UserSyntax gHC_TYPES (fsLit "Eq.Dict#") heqDictDataConKey heqDictDataCon -- TODOT name
+heqSCSelIdName :: Name
 heqSCSelIdName = mkWiredInIdName gHC_TYPES (fsLit "HEq_sc") heqSCSelIdKey heqSCSelId
+heqDictClassCoName :: Name
+heqDictClassCoName = mkWiredInCoAxiomName UserSyntax gHC_TYPES (fsLit "F:~~.Dict") heqDictCoKey heqDictCo -- TODOT name?
 
+
+-- TODOT do we even want these to be overridable?
 -- See Note [Kind-changing of (~) and Coercible] in libraries/ghc-prim/GHC/Types.hs
-coercibleTyConName, coercibleDataConName, coercibleSCSelIdName :: Name
-coercibleTyConName   = mkWiredInTyConName   UserSyntax gHC_TYPES (fsLit "Coercible")  coercibleTyConKey   coercibleTyCon
-coercibleDataConName = mkWiredInDataConName UserSyntax gHC_TYPES (fsLit "MkCoercible") coercibleDataConKey coercibleDataCon
-coercibleSCSelIdName = mkWiredInIdName gHC_TYPES (fsLit "Coercible_sc") coercibleSCSelIdKey coercibleSCSelId
+coercibleTyConName, coercibleDictTyConName :: Name
+coercibleTyConName     = mkWiredInTyConName UserSyntax gHC_TYPES (fsLit "Coercible")      coercibleTyConKey     coercibleTyCon
+coercibleDictTyConName = mkWiredInTyConName UserSyntax gHC_TYPES (fsLit "Coercible.Dict") coercibleDictTyConKey coercibleDictTyCon
+coercibleDataConName, coercibleDictDataConName :: Name
+coercibleDataConName     = mkWiredInDataConName UserSyntax gHC_TYPES (fsLit "MkCoercible")      coercibleDataConKey     coercibleDataCon
+coercibleDictDataConName = mkWiredInDataConName UserSyntax gHC_TYPES (fsLit "MkCoercible.Dict") coercibleDictDataConKey coercibleDictDataCon
+coercibleSCSelIdName :: Name
+coercibleSCSelIdName   = mkWiredInIdName gHC_TYPES (fsLit "Coercible_sc") coercibleSCSelIdKey coercibleSCSelId
+coercibleDictClassCoName :: Name
+coercibleDictClassCoName = mkWiredInCoAxiomName UserSyntax gHC_TYPES (fsLit "F:Coercible.Dict") coercibleDictCoKey coercibleDictCo
 
 charTyConName, charDataConName, intTyConName, intDataConName :: Name
 charTyConName     = mkWiredInTyConName   UserSyntax gHC_TYPES (fsLit "Char") charTyConKey charTyCon
@@ -1023,50 +1047,77 @@ mk_sum arity = (tycon, sum_cons)
 -- through superclasses, and (~#) is handled in that check.
 
 heqTyCon, coercibleTyCon :: TyCon
+heqDictTyCon, coercibleDictTyCon :: TyCon
 heqClass, coercibleClass :: Class
 heqDataCon, coercibleDataCon :: DataCon
+heqDictDataCon, coercibleDictDataCon :: DataCon
 heqSCSelId, coercibleSCSelId :: Id
+heqDictCo, coercibleDictCo :: CoAxiom Unbranched
 
-(heqTyCon, heqClass, heqDataCon, heqSCSelId)
-  = (tycon, klass, datacon, sc_sel_id)
+(heqTyCon, heqDictTyCon, heqClass, heqDataCon, heqDictDataCon, heqSCSelId, heqDictCo)
+  = (class_tycon, dict_tycon, klass, class_datacon, dict_datacon, sc_sel_id, co)
   where
-    tycon     = mkClassTyCon heqTyConName binders roles
-                             rhs klass
-                             (mkPrelTyConRepName heqTyConName)
-    klass     = mk_class tycon sc_pred sc_sel_id
-    datacon   = pcDataCon heqDataConName tvs [sc_pred] tycon
+    klass         = mk_class class_tycon dict_tycon sc_pred sc_sel_id
+    class_rep_nm  = mkPrelTyConRepName heqTyConName
+    dict_rep_nm   = mkPrelTyConRepName heqDictTyConName
+    class_tycon   = mkClassTyCon heqTyConName binders roles
+                                 class_rhs klass class_rep_nm
+    dict_tycon    = mkAlgTyCon heqDictTyConName binders liftedTypeKind
+                               roles Nothing [] dict_rhs
+                               (DictTyCon klass dict_rep_nm co) False
+    class_datacon = pcDataCon heqDataConName tvs [sc_pred] class_tycon
+    dict_datacon  = pcDataCon heqDictDataConName  tvs [sc_pred] dict_tycon
+
+    co_rhs_ty     = mkTyConApp class_tycon (mkTyVarTys tvs)
+    co            = mkDictToClassCoAxiom heqDictClassCoName dict_tycon
+                                         tvs roles co_rhs_ty
+
 
     -- Kind: forall k1 k2. k1 -> k2 -> Constraint
     binders   = mkTemplateTyConBinders [liftedTypeKind, liftedTypeKind] (\ks -> ks)
     roles     = [Nominal, Nominal, Nominal, Nominal]
-    rhs       = DataTyCon { data_cons = [datacon], is_enum = False }
+    class_rhs = DataTyCon { data_cons = [class_datacon], is_enum = False }
+    dict_rhs  = DataTyCon { data_cons = [dict_datacon],  is_enum = False }
 
     tvs       = binderVars binders
     sc_pred   = mkTyConApp eqPrimTyCon (mkTyVarTys tvs)
     sc_sel_id = mkDictSelId heqSCSelIdName klass
 
-(coercibleTyCon, coercibleClass, coercibleDataCon, coercibleSCSelId)
-  = (tycon, klass, datacon, sc_sel_id)
+(coercibleTyCon, coercibleDictTyCon, coercibleClass, coercibleDataCon, coercibleDictDataCon, coercibleSCSelId, coercibleDictCo)
+  = (class_tycon, dict_tycon, klass, class_datacon, dict_datacon, sc_sel_id, co)
   where
-    tycon     = mkClassTyCon coercibleTyConName binders roles
-                             rhs klass
-                             (mkPrelTyConRepName coercibleTyConName)
-    klass     = mk_class tycon sc_pred sc_sel_id
-    datacon   = pcDataCon coercibleDataConName tvs [sc_pred] tycon
+    klass         = mk_class class_tycon dict_tycon sc_pred sc_sel_id
+    class_rep_nm  = mkPrelTyConRepName coercibleTyConName
+    dict_rep_nm   = mkPrelTyConRepName coercibleDictTyConName
+    class_tycon   = mkClassTyCon coercibleTyConName binders roles
+                                 class_rhs klass class_rep_nm
+    dict_tycon    = mkAlgTyCon coercibleDictTyConName binders liftedTypeKind
+                               roles Nothing [] dict_rhs
+                               (DictTyCon klass dict_rep_nm co) False
+    class_datacon = pcDataCon coercibleDataConName tvs [sc_pred] class_tycon
+    dict_datacon  = pcDataCon coercibleDictDataConName  tvs [sc_pred] dict_tycon
+
+    co_rhs_ty     = mkTyConApp class_tycon (mkTyVarTys tvs)
+    co            = mkDictToClassCoAxiom coercibleDictClassCoName dict_tycon
+                                         tvs roles co_rhs_ty
+
 
     -- Kind: forall k. k -> k -> Constraint
     binders   = mkTemplateTyConBinders [liftedTypeKind] (\[k] -> [k,k])
     roles     = [Nominal, Representational, Representational]
-    rhs       = DataTyCon { data_cons = [datacon], is_enum = False }
+    class_rhs = DataTyCon { data_cons = [class_datacon], is_enum = False }
+    dict_rhs  = DataTyCon { data_cons = [dict_datacon],  is_enum = False }
 
     tvs@[k,a,b] = binderVars binders
     sc_pred     = mkTyConApp eqReprPrimTyCon (mkTyVarTys [k, k, a, b])
     sc_sel_id   = mkDictSelId coercibleSCSelIdName klass
 
-mk_class :: TyCon -> PredType -> Id -> Class
-mk_class tycon sc_pred sc_sel_id
+mk_class :: TyCon  -- ^ Class TyCon
+         -> TyCon  -- ^ Dictionary TyCon
+         -> PredType -> Id -> Class
+mk_class tycon dict_tycon sc_pred sc_sel_id
   = mkClass (tyConName tycon) (tyConTyVars tycon) [] [sc_pred] [sc_sel_id]
-            [] [] (mkAnd []) tycon
+            [] [] (mkAnd []) tycon dict_tycon [] -- TODOT sc_fields?
 
 {- *********************************************************************
 *                                                                      *

@@ -1869,6 +1869,17 @@ someTypeRepDataConKey = mkPreludeTyConUnique 186
 typeSymbolAppendFamNameKey :: Unique
 typeSymbolAppendFamNameKey = mkPreludeTyConUnique 187
 
+-- Dictionary type constructors
+heqDictTyConKey, coercibleDictTyConKey :: Unique
+heqDictTyConKey = mkPreludeTyConUnique 188
+coercibleDictTyConKey = mkPreludeTyConUnique 189
+
+-- Dictionary to class coercions
+heqDictCoKey, coercibleDictCoKey :: Unique
+heqDictCoKey = mkPreludeTyConUnique 190
+coercibleDictCoKey = mkPreludeTyConUnique 191
+
+
 ---------------- Template Haskell -------------------
 --      THNames.hs: USES TyConUniques 200-299
 -----------------------------------------------------
@@ -2035,6 +2046,11 @@ kindRepTypeLitDDataConKey = mkPreludeDataConUnique 106
 typeLitSymbolDataConKey, typeLitNatDataConKey :: Unique
 typeLitSymbolDataConKey   = mkPreludeDataConUnique 107
 typeLitNatDataConKey      = mkPreludeDataConUnique 108
+
+-- Dictionary data constructors
+heqDictDataConKey, coercibleDictDataConKey :: Unique
+heqDictDataConKey = mkPreludeDataConUnique 109
+coercibleDictDataConKey = mkPreludeDataConUnique 110
 
 
 ---------------- Template Haskell -------------------

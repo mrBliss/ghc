@@ -16,7 +16,7 @@ module FamInstEnv (
 
         -- * CoAxioms
         mkCoAxBranch, mkBranchedCoAxiom, mkUnbranchedCoAxiom, mkSingleCoAxiom,
-        mkNewTypeCoAxiom,
+        mkNewTypeCoAxiom, mkDictToClassCoAxiom,
 
         FamInstMatch(..),
         lookupFamInstEnv, lookupFamInstEnvConflicts, lookupFamInstEnvByTyCon,
@@ -661,6 +661,16 @@ mkNewTypeCoAxiom name tycon tvs roles rhs_ty
   where
     branch = mkCoAxBranch tvs [] (mkTyVarTys tvs) rhs_ty
                           roles (getSrcSpan name)
+
+-- | Create a coercion constructor (axiom) to convert type-class dictionary
+-- data type to the corresponding type-class constraint.
+--
+-- For example, to convert C.Dict a :: * to C a :: Constraint
+--
+-- See 'mkNewTypeCoAxiom' for details about the arguments.
+mkDictToClassCoAxiom :: Name -> TyCon -> [TyVar] -> [Role] -> Type
+                     -> CoAxiom Unbranched
+mkDictToClassCoAxiom = mkNewTypeCoAxiom
 
 {-
 ************************************************************************

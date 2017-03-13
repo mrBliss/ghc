@@ -617,10 +617,14 @@ getLocalNonValBinders fixity_env
     new_tc overload_ok tc_decl -- NOT for type/data instances
         = do { let (bndrs, flds) = hsLTyClDeclBinders tc_decl
              ; names@(main_name : sub_names) <- mapM newTopSrcBinder bndrs
-             ; flds' <- mapM (newRecordSelector overload_ok sub_names) flds
+             -- Allow duplicate parent1, parent2, ... fields for type-class
+             -- dictionaries
+             ; let overload_ok' = overload_ok || isClassDecl (unLoc tc_decl)
+             ; flds' <- mapM (newRecordSelector overload_ok' sub_names) flds
              ; let fld_env = case unLoc tc_decl of
-                     DataDecl { tcdDataDefn = d } -> mk_fld_env d names flds'
-                     _                            -> []
+                     DataDecl  { tcdDataDefn = d } -> mk_fld_env d names flds'
+                     ClassDecl { tcdLDictCon = d } -> [mk_dict_sc_fld_env d names flds']
+                     _                             -> []
              ; return (AvailTC main_name names flds', fld_env) }
 
 
@@ -632,12 +636,12 @@ getLocalNonValBinders fixity_env
       where
         find_con_flds (L _ (ConDeclH98 { con_name    = L _ rdr
                                        , con_details = RecCon cdflds }))
-            = [( find_con_name rdr
+            = [( find_con_name rdr names
                , concatMap find_con_decl_flds (unLoc cdflds) )]
         find_con_flds (L _ (ConDeclGADT
                               { con_names = rdrs
                               , con_type = (HsIB { hsib_body = res_ty})}))
-            = map (\ (L _ rdr) -> ( find_con_name rdr
+            = map (\ (L _ rdr) -> ( find_con_name rdr names
                                   , concatMap find_con_decl_flds cdflds))
                   rdrs
             where
@@ -650,15 +654,22 @@ getLocalNonValBinders fixity_env
                  _                                    -> []
         find_con_flds _ = []
 
-        find_con_name rdr
-          = expectJust "getLocalNonValBinders/find_con_name" $
-              find (\ n -> nameOccName n == rdrNameOcc rdr) names
         find_con_decl_flds (L _ x)
           = map find_con_decl_fld (cd_fld_names x)
         find_con_decl_fld  (L _ (FieldOcc (L _ rdr) _))
           = expectJust "getLocalNonValBinders/find_con_decl_fld" $
               find (\ fl -> flLabel fl == lbl) flds
           where lbl = occNameFS (rdrNameOcc rdr)
+
+    find_con_name :: RdrName -> [Name] -> Name
+    find_con_name rdr names
+      = expectJust "getLocalNonValBinders/find_con_name" $
+          find (\ n -> nameOccName n == rdrNameOcc rdr) names
+
+    mk_dict_sc_fld_env :: Located RdrName -> [Name] -> [FieldLabel] -> (Name, [FieldLabel])
+    mk_dict_sc_fld_env d names flds = (name, flds)
+      where
+        name = find_con_name (unLoc d) names
 
     new_assoc :: Bool -> LInstDecl RdrName
               -> RnM ([AvailInfo], [(Name, [FieldLabel])])
