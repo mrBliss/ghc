@@ -1920,6 +1920,14 @@ Examples:
 
   * Axioms for newtypes are implicit (same as above), but axioms
     for data/type family instances are *not* implicit (like DFunIds).
+
+  * Nearly all things related to the dictionary record of a type class
+    (C.Dict) are implicit: the dictionary tycon and datacon, the coercion
+    between C.Dict and C, a possible newtype coercion. Selectors are only
+    generated for the superclass fields (parent1, parent2, ...), they end up
+    as separate (explicit) iface decls. For the other fields, we piggyback on
+    the methods with the same names.
+
 -}
 
 -- | Determine the 'TyThing's brought into scope by another 'TyThing'
@@ -1957,6 +1965,17 @@ implicitClassThings cl
   = -- Does not include default methods, because those Ids may have
     --    their own pragmas, unfoldings etc, not derived from the Class object
 
+    -- Dictionary tycon
+    ATyCon dict_tycon :
+
+    -- Coercion between C.Dict and C
+    ACoAxiom (toBranchedAxiom (dictTyConCo dict_tycon)) :
+
+    -- Dictionary datacon (none in case of an abstract class) and its implicit
+    -- things
+    maybe [] (\dc -> AConLike (RealDataCon dc) : dataConImplicitTyThings dc)
+             (tyConSingleDataCon_maybe dict_tycon) ++
+
     -- associated types
     --    No recursive call for the classATs, because they
     --    are only the family decls; they have no implicit things
@@ -1964,6 +1983,8 @@ implicitClassThings cl
 
     -- superclass and operation selectors
     map AnId (classAllSelIds cl)
+  where
+    dict_tycon = classDictTyCon cl
 
 implicitTyConThings :: TyCon -> [TyThing]
 implicitTyConThings tc

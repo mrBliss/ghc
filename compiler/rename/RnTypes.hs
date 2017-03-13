@@ -15,7 +15,7 @@ module RnTypes (
         rnHsSigWcType, rnHsSigWcTypeScoped,
         rnLHsInstType,
         newTyVarNameRn, collectAnonWildCards,
-        rnConDeclFields,
+        rnConDeclFields, lookupField,
         rnLTyVar,
 
         -- Precence related stuff
@@ -1112,19 +1112,19 @@ rnConDeclFields ctxt fls fields
 rnField :: FastStringEnv FieldLabel -> RnTyKiEnv -> LConDeclField GhcPs
         -> RnM (LConDeclField GhcRn, FreeVars)
 rnField fl_env env (L l (ConDeclField _ names ty haddock_doc))
-  = do { let new_names = map (fmap lookupField) names
+  = do { let new_names = map (fmap (lookupField fl_env)) names
        ; (new_ty, fvs) <- rnLHsTyKi env ty
        ; new_haddock_doc <- rnMbLHsDoc haddock_doc
        ; return (L l (ConDeclField noExt new_names new_ty new_haddock_doc)
                 , fvs) }
-  where
-    lookupField :: FieldOcc GhcPs -> FieldOcc GhcRn
-    lookupField (FieldOcc _ (L lr rdr)) = FieldOcc (flSelector fl) (L lr rdr)
-      where
-        lbl = occNameFS $ rdrNameOcc rdr
-        fl  = expectJust "rnField" $ lookupFsEnv fl_env lbl
-    lookupField (XFieldOcc{}) = panic "rnField"
 rnField _ _ (L _ (XConDeclField _)) = panic "rnField"
+
+lookupField :: FastStringEnv FieldLabel -> FieldOcc GhcPs -> FieldOcc GhcRn
+lookupField fl_env (FieldOcc _ (L lr rdr)) = FieldOcc (flSelector fl) (L lr rdr)
+  where
+    lbl = occNameFS $ rdrNameOcc rdr
+    fl  = expectJust "rnField" $ lookupFsEnv fl_env lbl
+lookupField _ (XFieldOcc{}) = panic "lookupField"
 
 {-
 ************************************************************************

@@ -1572,7 +1572,7 @@ reifyClass cls
         ; let dec = TH.ClassD cxt (reifyName cls) tvs' fds' (assocTys ++ ops)
         ; return (TH.ClassI dec insts) }
   where
-    (_, fds, theta, _, ats, op_stuff) = classExtraBigSig cls
+    (_, fds, theta, _, ats, op_stuff, _) = classExtraBigSig cls
     fds' = map reifyFunDep fds
     reify_op (op, def_meth)
       = do { ty <- reifyType (idType op)

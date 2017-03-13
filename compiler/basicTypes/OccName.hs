@@ -66,9 +66,10 @@ module OccName (
         mkDataTOcc, mkDataCOcc, mkDataConWorkerOcc,
         mkSuperDictSelOcc, mkSuperDictAuxOcc,
         mkLocalOcc, mkMethodOcc, mkInstTyTcOcc,
-        mkInstTyCoOcc, mkEqPredCoOcc,
+        mkInstTyCoOcc, mkDictClassCoOcc, mkEqPredCoOcc,
         mkRecFldSelOcc,
         mkTyConRepOcc,
+        mkDictRecordTyConOcc, mkDictRecordDataConOcc,
 
         -- ** Deconstruction
         occNameFS, occNameString, occNameSpace,
@@ -615,7 +616,7 @@ mkDataConWrapperOcc, mkWorkerOcc,
         mkDataConWorkerOcc, mkNewTyCoOcc,
         mkInstTyCoOcc, mkEqPredCoOcc, mkClassOpAuxOcc,
         mkCon2TagOcc, mkTag2ConOcc, mkMaxTagOcc,
-        mkTyConRepOcc
+        mkTyConRepOcc, mkDictClassCoOcc
    :: OccName -> OccName
 
 -- These derived variables have a prefix that no Haskell value could have
@@ -633,6 +634,7 @@ mkRepEqOcc          = mk_simple_deriv tvName   "$r"   -- In RULES involving Coer
 mkClassDataConOcc   = mk_simple_deriv dataName "C:"     -- Data con for a class
 mkNewTyCoOcc        = mk_simple_deriv tcName   "N:"   -- Coercion for newtypes
 mkInstTyCoOcc       = mk_simple_deriv tcName   "D:"   -- Coercion for type functions
+mkDictClassCoOcc    = mk_simple_deriv tcName   "F:"   -- Coercion from C.Dict to C TODOT letter?
 mkEqPredCoOcc       = mk_simple_deriv tcName   "$co"
 
 -- Used in derived instances
@@ -712,6 +714,18 @@ mkDataTOcc, mkDataCOcc
 --      $cMkT :: Data.Generics.Basics.Constr
 mkDataTOcc occ = chooseUniqueOcc VarName ("$t" ++ occNameString occ)
 mkDataCOcc occ = chooseUniqueOcc VarName ("$c" ++ occNameString occ)
+
+-- TODOT mkDictOcc already exists
+mkDictRecordTyConOcc :: OccName -> OccName
+mkDictRecordTyConOcc = mkDictRecordOcc tcClsName
+
+mkDictRecordDataConOcc :: OccName -> OccName
+mkDictRecordDataConOcc = mkDictRecordOcc dataName
+
+mkDictRecordOcc :: NameSpace -> OccName -> OccName
+mkDictRecordOcc ns clsName =
+    mkOccNameFS ns (occNameFS clsName `mappend` ".Dict")
+
 
 {-
 Sometimes we need to pick an OccName that has not already been used,

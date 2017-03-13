@@ -717,38 +717,45 @@ tc_iface_decl parent _ (IfaceFamily {ifName = tc_name,
                     (text "IfaceBuiltInSynFamTyCon in interface file")
 
 tc_iface_decl _parent _ignore_prags
-            (IfaceClass {ifName = tc_name,
+            (IfaceClass {ifName = class_tc_name,
+                         ifDictTCName = dict_tc_name,
                          ifRoles = roles,
                          ifBinders = binders,
                          ifFDs = rdr_fds,
                          ifBody = IfAbstractClass})
   = bindIfaceTyConBinders binders $ \ binders' -> do
     { fds  <- mapM tc_fd rdr_fds
-    ; cls  <- buildClass tc_name binders' roles fds Nothing
+    ; cls  <- buildClass class_tc_name dict_tc_name binders' roles
+                         fds Nothing
     ; return (ATyCon (classTyCon cls)) }
 
 tc_iface_decl _parent ignore_prags
-            (IfaceClass {ifName = tc_name,
+            (IfaceClass {ifName = class_tc_name,
+                         ifDictTCName = dict_tc_name,
                          ifRoles = roles,
                          ifBinders = binders,
                          ifFDs = rdr_fds,
                          ifBody = IfConcreteClass {
                              ifClassCtxt = rdr_ctxt,
                              ifATs = rdr_ats, ifSigs = rdr_sigs,
-                             ifMinDef = mindef_occ
+                             ifMinDef = mindef_occ, ifDictDCName = dict_dc_name,
+                             ifDictSCFields = sc_fields
                          }})
   = bindIfaceTyConBinders binders $ \ binders' -> do
-    { traceIf (text "tc-iface-class1" <+> ppr tc_name)
+    { traceIf (text "tc-iface-class1" <+> ppr class_tc_name)
     ; ctxt <- mapM tc_sc rdr_ctxt
-    ; traceIf (text "tc-iface-class2" <+> ppr tc_name)
+    ; traceIf (text "tc-iface-class2" <+> ppr class_tc_name)
     ; sigs <- mapM tc_sig rdr_sigs
     ; fds  <- mapM tc_fd rdr_fds
-    ; traceIf (text "tc-iface-class3" <+> ppr tc_name)
+    ; traceIf (text "tc-iface-class3" <+> ppr class_tc_name)
     ; mindef <- traverse (lookupIfaceTop . mkVarOccFS) mindef_occ
     ; cls  <- fixM $ \ cls -> do
               { ats  <- mapM (tc_at cls) rdr_ats
-              ; traceIf (text "tc-iface-class4" <+> ppr tc_name)
-              ; buildClass tc_name binders' roles fds (Just (ctxt, ats, sigs, mindef)) }
+              ; traceIf (text "tc-iface-class4" <+> ppr class_tc_name)
+              ; buildClass class_tc_name dict_tc_name binders'
+                           roles fds
+                           (Just (ctxt, ats, sigs, mindef, dict_dc_name,
+                                  sc_fields)) }
     ; return (ATyCon (classTyCon cls)) }
   where
    tc_sc pred = forkM (mk_sc_doc pred) (tcIfaceType pred)

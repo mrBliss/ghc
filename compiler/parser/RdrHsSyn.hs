@@ -25,6 +25,8 @@ module   RdrHsSyn (
         mkTyClD, mkInstD,
         mkRdrRecordCon, mkRdrRecordUpd,
         setRdrNameSpace,
+        mkDictRecordTyConName,
+        mkDictRecordDataConName,
 
         cvBindGroup,
         cvBindsAndSigs,
@@ -140,6 +142,12 @@ mkTyClD (L loc d) = L loc (TyClD noExt d)
 mkInstD :: LInstDecl (GhcPass p) -> LHsDecl (GhcPass p)
 mkInstD (L loc d) = L loc (InstD noExt d)
 
+mkDictRecordTyConName :: RdrName -> RdrName
+mkDictRecordTyConName cls = mkRdrUnqual (mkDictRecordTyConOcc (rdrNameOcc cls))
+
+mkDictRecordDataConName :: RdrName -> RdrName
+mkDictRecordDataConName cls = mkRdrUnqual (mkDictRecordDataConOcc (rdrNameOcc cls))
+
 mkClassDecl :: SrcSpan
             -> Located (Maybe (LHsContext GhcPs), LHsType GhcPs)
             -> Located (a,[Located (FunDep (Located RdrName))])
@@ -155,12 +163,20 @@ mkClassDecl loc (L _ (mcxt, tycl_hdr)) fds where_cls
        ; at_defs <- mapM (eitherToP . mkATDefault) at_insts
        ; return (L loc (ClassDecl { tcdCExt = noExt, tcdCtxt = cxt
                                   , tcdLName = cls, tcdTyVars = tyvars
-                                  , tcdFixity = fixity
+                                  , tcdLDictTy = fmap mkDictRecordTyConName cls
+                                  , tcdLDictCon = fmap mkDictRecordDataConName cls
+                                  , tcdSCFields = mkSCFields loc (unLoc cxt)                                                  , tcdFixity = fixity
                                   , tcdFDs = snd (unLoc fds)
                                   , tcdSigs = mkClassOpSigs sigs
                                   , tcdMeths = binds
                                   , tcdATs = ats, tcdATDefs = at_defs
                                   , tcdDocs  = docs })) }
+
+mkSCFields :: SrcSpan -> HsContext GhcPs -> [FieldOcc GhcPs]
+mkSCFields loc cxt = map mk_sc_field (takeList cxt [fIRST_TAG..])
+  where
+    mk_sc_field n = mkFieldOcc $ L loc $
+                    mkRdrUnqual $ mkVarOcc ("parent" ++ show n)
 
 mkATDefault :: LTyFamInstDecl GhcPs
             -> Either (SrcSpan, SDoc) (LTyFamDefltEqn GhcPs)
