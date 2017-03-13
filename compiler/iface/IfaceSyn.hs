@@ -142,6 +142,7 @@ data IfaceDecl
                    ifFamInj  :: Injectivity }      -- injectivity information
 
   | IfaceClass { ifName    :: IfaceTopBndr,             -- Name of the class TyCon
+                 ifDictTCName :: IfaceTopBndr,          -- Name of the dict TyCon
                  ifRoles   :: [Role],                   -- Roles
                  ifBinders :: [IfaceTyConBinder],
                  ifFDs     :: [FunDep IfLclName],       -- Functional dependencies
@@ -177,7 +178,13 @@ data IfaceClassBody
      ifClassCtxt :: IfaceContext,             -- Super classes
      ifATs       :: [IfaceAT],                -- Associated type families
      ifSigs      :: [IfaceClassOp],           -- Method signatures
-     ifMinDef    :: BooleanFormula IfLclName  -- Minimal complete definition
+     ifMinDef    :: BooleanFormula IfLclName, -- Minimal complete definition
+     ifDictDCName :: IfaceTopBndr,            -- Name of the dictionary record
+                                              -- constructor
+     ifDictDCWrapper :: Bool,                 -- True <=> dictionary record
+                                              -- constructor has a wrapper
+     ifDictSCFields :: [FieldLabel]           -- Superclass fields of the
+                                              -- dictionary record
     }
 
 data IfaceTyConParent
@@ -407,16 +414,26 @@ ifaceDeclImplicitBndrs (IfaceData {ifName = tc_name, ifCons = cons })
       IfNewTyCon  cd  -> mkNewTyCoOcc (occName tc_name) : ifaceConDeclImplicitBndrs cd
       IfDataTyCon cds -> concatMap ifaceConDeclImplicitBndrs cds
 
-ifaceDeclImplicitBndrs (IfaceClass { ifBody = IfAbstractClass })
-  = []
+ifaceDeclImplicitBndrs (IfaceClass { ifDictTCName = dict_tc_name
+                                   , ifBody = IfAbstractClass })
+  = [occName dict_tc_name, mkDictClassCoOcc (occName dict_tc_name)]
 
 ifaceDeclImplicitBndrs (IfaceClass { ifName = cls_tc_name
+                                   , ifDictTCName = dict_tc_name
                                    , ifBody = IfConcreteClass {
                                         ifClassCtxt = sc_ctxt,
                                         ifSigs      = sigs,
-                                        ifATs       = ats
+                                        ifATs       = ats,
+                                        ifDictDCName = dict_dc_name,
+                                        ifDictDCWrapper = dict_dc_has_wrapper
                                      }})
-  = --   (possibly) newtype coercion
+  = -- dictionary tycon
+    dict_tc_occ :
+    -- coercion between dictionary record and class dictionary
+    co_dict_occ :
+    -- dictionary datacon and its wrappers
+    dict_dc_occ : dict_dc_work_occ : dict_dc_wrap_occs ++
+    --   (possibly) newtype coercion
     co_occs ++
     --    data constructor (DataCon namespace)
     --    data worker (Id namespace)
@@ -430,10 +447,16 @@ ifaceDeclImplicitBndrs (IfaceClass { ifName = cls_tc_name
     [occName op | IfaceClassOp op  _ _ <- sigs]
   where
     cls_tc_occ = occName cls_tc_name
+    dict_tc_occ = occName dict_tc_name
+    dict_dc_occ = occName dict_dc_name
+    dict_dc_work_occ = mkDataConWorkerOcc dict_dc_occ
+    dict_dc_wrap_occs | dict_dc_has_wrapper = [mkDataConWrapperOcc dict_dc_occ]
+                      | otherwise           = []
     n_ctxt = length sc_ctxt
     n_sigs = length sigs
-    co_occs | is_newtype = [mkNewTyCoOcc cls_tc_occ]
+    co_occs | is_newtype = [mkNewTyCoOcc cls_tc_occ, mkNewTyCoOcc dict_tc_occ]
             | otherwise  = []
+    co_dict_occ = mkDictClassCoOcc (occName dict_tc_name)
     dcww_occ = mkDataConWorkerOcc dc_occ
     dc_occ = mkClassDataConOcc cls_tc_occ
     is_newtype = n_sigs + n_ctxt == 1 -- Sigh (keep this synced with buildClass)
@@ -1333,10 +1356,15 @@ freeNamesIfDecl (IfacePatSyn { ifPatMatcher = (matcher, _)
 freeNamesIfClassBody :: IfaceClassBody -> NameSet
 freeNamesIfClassBody IfAbstractClass
   = emptyNameSet
-freeNamesIfClassBody (IfConcreteClass{ ifClassCtxt = ctxt, ifATs = ats, ifSigs = sigs })
+freeNamesIfClassBody (IfConcreteClass{ ifClassCtxt = ctxt
+                                     , ifATs = ats
+                                     , ifSigs = sigs
+                                     , ifDictSCFields = sc_fields
+                                     })
   = freeNamesIfContext ctxt  &&&
     fnList freeNamesIfAT ats &&&
-    fnList freeNamesIfClsSig sigs
+    fnList freeNamesIfClsSig sigs &&&
+    mkNameSet (map flSelector sc_fields)
 
 freeNamesIfAxBranch :: IfaceAxBranch -> NameSet
 freeNamesIfAxBranch (IfaceAxBranch { ifaxbTyVars   = tyvars
@@ -1649,25 +1677,33 @@ instance Binary IfaceDecl where
 
     -- NB: Written in a funny way to avoid an interface change
     put_ bh (IfaceClass {
-                ifName    = a2,
-                ifRoles   = a3,
-                ifBinders = a4,
-                ifFDs     = a5,
+                ifName       = a2,
+                ifDictTCName = a3,
+                ifRoles      = a4,
+                ifBinders    = a5,
+                ifFDs        = a6,
                 ifBody = IfConcreteClass {
                     ifClassCtxt = a1,
-                    ifATs  = a6,
-                    ifSigs = a7,
-                    ifMinDef  = a8
+                    ifATs  = a7,
+                    ifSigs = a8,
+                    ifMinDef  = a9,
+                    ifDictDCName = a10,
+                    ifDictDCWrapper = a11,
+                    ifDictSCFields = a12
                 }}) = do
         putByte bh 5
         put_ bh a1
         putIfaceTopBndr bh a2
-        put_ bh a3
+        putIfaceTopBndr bh a3
         put_ bh a4
         put_ bh a5
         put_ bh a6
         put_ bh a7
         put_ bh a8
+        put_ bh a9
+        putIfaceTopBndr bh a10
+        put_ bh a11
+        put_ bh a12
 
     put_ bh (IfaceAxiom a1 a2 a3 a4) = do
         putByte bh 6
@@ -1692,15 +1728,17 @@ instance Binary IfaceDecl where
 
     put_ bh (IfaceClass {
                 ifName    = a1,
-                ifRoles   = a2,
-                ifBinders = a3,
-                ifFDs     = a4,
+                ifDictTCName = a2,
+                ifRoles   = a3,
+                ifBinders = a4,
+                ifFDs     = a5,
                 ifBody = IfAbstractClass }) = do
         putByte bh 8
         putIfaceTopBndr bh a1
-        put_ bh a2
+        putIfaceTopBndr bh a2
         put_ bh a3
         put_ bh a4
+        put_ bh a5
 
     get bh = do
         h <- getByte bh
@@ -1735,22 +1773,30 @@ instance Binary IfaceDecl where
                     return (IfaceFamily a1 a2 a3 a4 a5 a6)
             5 -> do a1 <- get bh
                     a2 <- getIfaceTopBndr bh
-                    a3 <- get bh
+                    a3 <- getIfaceTopBndr bh
                     a4 <- get bh
                     a5 <- get bh
                     a6 <- get bh
                     a7 <- get bh
                     a8 <- get bh
+                    a9 <- get bh
+                    a10 <- getIfaceTopBndr bh
+                    a11 <- get bh
+                    a12 <- get bh
                     return (IfaceClass {
                         ifName    = a2,
-                        ifRoles   = a3,
-                        ifBinders = a4,
-                        ifFDs     = a5,
+                        ifDictTCName = a3,
+                        ifRoles   = a4,
+                        ifBinders = a5,
+                        ifFDs     = a6,
                         ifBody = IfConcreteClass {
                             ifClassCtxt = a1,
-                            ifATs  = a6,
-                            ifSigs = a7,
-                            ifMinDef  = a8
+                            ifATs  = a7,
+                            ifSigs = a8,
+                            ifMinDef  = a9,
+                            ifDictDCName   = a10,
+                            ifDictDCWrapper = a11,
+                            ifDictSCFields = a12
                         }})
             6 -> do a1 <- getIfaceTopBndr bh
                     a2 <- get bh
@@ -1770,14 +1816,16 @@ instance Binary IfaceDecl where
                     a11 <- get bh
                     return (IfacePatSyn a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11)
             8 -> do a1 <- getIfaceTopBndr bh
-                    a2 <- get bh
+                    a2 <- getIfaceTopBndr bh
                     a3 <- get bh
                     a4 <- get bh
+                    a5 <- get bh
                     return (IfaceClass {
                         ifName    = a1,
-                        ifRoles   = a2,
-                        ifBinders = a3,
-                        ifFDs     = a4,
+                        ifDictTCName = a2,
+                        ifRoles   = a3,
+                        ifBinders = a4,
+                        ifFDs     = a5,
                         ifBody = IfAbstractClass })
             _ -> panic (unwords ["Unknown IfaceDecl tag:", show h])
 

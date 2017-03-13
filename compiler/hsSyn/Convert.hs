@@ -247,7 +247,11 @@ cvtDec (ClassD ctxt cl tvs fds decs)
                     , tcdFDs = fds', tcdSigs = Hs.mkClassOpSigs sigs'
                     , tcdMeths = binds'
                     , tcdATs = fams', tcdATDefs = at_defs, tcdDocs = []
-                    , tcdFVs = placeHolderNames }
+                    , tcdFVs = placeHolderNames
+                    , tcdLDictTy = error "TODOT"
+                    , tcdLDictCon = error "TODOT"
+                    , tcdSCFields = error "TODOT"
+                    }
                               -- no docs in TH ^^
         }
   where

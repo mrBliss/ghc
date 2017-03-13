@@ -518,6 +518,9 @@ data TyClDecl pass
   | ClassDecl { tcdCtxt    :: LHsContext pass,         -- ^ Context...
                 tcdLName   :: Located (IdP pass),      -- ^ Name of the class
                 tcdTyVars  :: LHsQTyVars pass,         -- ^ Class type variables
+                tcdLDictTy :: Located (IdP pass),      -- ^ Name of the dictionary type constructor
+                tcdLDictCon :: Located (IdP pass),     -- ^ Name of the dictionary data constructor
+                tcdSCFields :: [FieldOcc pass],        -- ^ Fields for the superclasses
                 tcdFixity  :: LexicalFixity, -- ^ Fixity used in the declaration
                 tcdFDs     :: [Located (FunDep (Located (IdP pass)))],
                                                         -- ^ Functional deps

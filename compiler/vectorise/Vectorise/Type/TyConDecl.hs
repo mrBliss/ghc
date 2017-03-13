@@ -61,6 +61,7 @@ vectTyConDecl tycon name'
        ; cls' <- liftDs $
                    buildClass
                      name'                      -- new name: "V:Class"
+                     (error "buildClass Vectorise") -- TODOT fix
                      (tyConBinders tycon)       -- keep original kind
                      (map (const Nominal) (tyConRoles tycon)) -- all role are N for safety
                      (snd . classTvsFds $ cls)  -- keep the original functional dependencies
@@ -68,7 +69,9 @@ vectTyConDecl tycon name'
                          theta',                 -- superclasses
                          [],                     -- no associated types (for the moment)
                          methods',               -- method info
-                         (classMinimalDef cls))) -- Inherit minimal complete definition from cls
+                         (classMinimalDef cls),  -- Inherit minimal complete definition from cls
+                         (error "buildClass Vectorise"), -- TODOT fix
+                         []))                    -- TODOT fix
 
            -- the original dictionary constructor must map to the vectorised one
        ; let tycon'        = classTyCon cls'

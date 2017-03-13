@@ -1104,11 +1104,14 @@ hsLTyClDeclBinders (L loc (FamDecl { tcdFam = FamilyDecl { fdLName = L _ name } 
   = ([L loc name], [])
 hsLTyClDeclBinders (L loc (SynDecl     { tcdLName = L _ name })) = ([L loc name], [])
 hsLTyClDeclBinders (L loc (ClassDecl   { tcdLName = L _ cls_name
+                                       , tcdLDictTy = L _ dict_ty_name
+                                       , tcdLDictCon = L _ dict_con_name
+                                       , tcdSCFields = sc_fields
                                        , tcdSigs = sigs, tcdATs = ats }))
-  = (L loc cls_name :
+  = (L loc cls_name : L loc dict_ty_name : L loc dict_con_name :
      [ L fam_loc fam_name | L fam_loc (FamilyDecl { fdLName = L _ fam_name }) <- ats ] ++
      [ L mem_loc mem_name | L mem_loc (ClassOpSig False ns _) <- sigs, L _ mem_name <- ns ]
-    , [])
+    , [L loc sc_field |  sc_field <- sc_fields])
 hsLTyClDeclBinders (L loc (DataDecl    { tcdLName = L _ name, tcdDataDefn = defn }))
   = (\ (xs, ys) -> (L loc name : xs, ys)) $ hsDataDefnBinders defn
 

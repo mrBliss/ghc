@@ -63,6 +63,9 @@ module Type (
 
         modifyJoinResTy, setJoinResTy,
 
+        replaceClassWithDict_maybe, replaceClassWithDict,
+        replaceDictWithClass_maybe, replaceDictWithClass,
+
         -- Analyzing types
         TyCoMapper(..), mapType, mapCoercion,
 
@@ -1684,6 +1687,7 @@ equalityTyCon Nominal          = eqPrimTyCon
 equalityTyCon Representational = eqReprPrimTyCon
 equalityTyCon Phantom          = eqPhantPrimTyCon
 
+-- TODOT rename these?
 -- --------------------- Dictionary types ---------------------------------
 
 mkClassPred :: Class -> [Type] -> PredType
@@ -2446,3 +2450,28 @@ setJoinResTy :: Int  -- Number of binders to skip
 -- INVARIANT: Same as for modifyJoinResTy
 setJoinResTy ar new_res_ty ty
   = modifyJoinResTy ar (const new_res_ty) ty
+
+-- TODOT right place for this?
+replaceClassWithDict_maybe :: Type -> Maybe Type
+replaceClassWithDict_maybe ty = do
+  let (tvs, ty') = splitForAllTyVarBndrs ty
+  (tc, tys) <- splitTyConApp_maybe ty'
+  clas      <- tyConClass_maybe tc
+  return $ mkForAllTys tvs $ mkTyConApp (classDictTyCon clas) tys
+
+-- TODOT right place for this?
+replaceClassWithDict :: Type -> Type
+replaceClassWithDict ty = replaceClassWithDict_maybe ty `orElse` ty
+
+
+-- TODOT right place for this?
+replaceDictWithClass_maybe :: Type -> Maybe Type
+replaceDictWithClass_maybe ty = do
+  let (tvs, ty') = splitForAllTyVarBndrs ty
+  (tc, tys) <- splitTyConApp_maybe ty'
+  clas      <- dictTyConClass_maybe tc
+  return $ mkForAllTys tvs $ mkTyConApp (classTyCon clas) tys
+
+-- TODOT right place for this?
+replaceDictWithClass :: Type -> Type
+replaceDictWithClass ty = replaceDictWithClass_maybe ty `orElse` ty

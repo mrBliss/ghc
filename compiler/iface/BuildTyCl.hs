@@ -18,7 +18,7 @@ module BuildTyCl (
 import GhcPrelude
 
 import IfaceEnv
-import FamInstEnv( FamInstEnvs, mkNewTypeCoAxiom )
+import FamInstEnv( FamInstEnvs, mkNewTypeCoAxiom, mkDictToClassCoAxiom )
 import TysWiredIn( isCTupleTyConName )
 import TysPrim ( voidPrimTy )
 import DataCon
@@ -239,40 +239,54 @@ type TcMethInfo     -- A temporary intermediate, to communicate
          --    for the generic default method, spat out by checkValidClass
 
 buildClass :: Name  -- Name of the class/tycon (they have the same Name)
+           -> Name  -- Name of the dictionary tycon
            -> [TyConBinder]                -- Of the tycon
            -> [Role]
            -> [FunDep TyVar]               -- Functional dependencies
-           -- Super classes, associated types, method info, minimal complete def.
-           -- This is Nothing if the class is abstract.
-           -> Maybe (ThetaType, [ClassATItem], [TcMethInfo], ClassMinimalDef)
+           -- Super classes, associated types, method info, minimal complete
+           -- def, name of the dictionary datacon, superclass fields of the
+           -- dictionary. This is Nothing if the class is abstract.
+           -> Maybe (ThetaType, [ClassATItem], [TcMethInfo], ClassMinimalDef,
+                     Name, [FieldLabel])
            -> TcRnIf m n Class
 
-buildClass tycon_name binders roles fds Nothing
+buildClass class_tycon_name dict_tycon_name binders roles fds Nothing
   = fixM  $ \ rec_clas ->       -- Only name generation inside loop
     do  { traceIf (text "buildClass")
 
-        ; tc_rep_name  <- newTyConRepName tycon_name
-        ; let univ_bndrs = tyConTyVarBinders binders
-              univ_tvs   = binderVars univ_bndrs
-              tycon = mkClassTyCon tycon_name binders roles
-                                   AbstractTyCon rec_clas tc_rep_name
-              result = mkAbstractClass tycon_name univ_tvs fds tycon
-        ; traceIf (text "buildClass" <+> ppr tycon)
+        ; class_tc_rep_name <- newTyConRepName class_tycon_name
+        ; dict_tc_rep_nm    <- newTyConRepName dict_tycon_name
+          -- TODOT proper name?
+        ; co_tycon_name <- newImplicitBinder dict_tycon_name mkDictClassCoOcc
+        ; let univ_bndrs  = tyConTyVarBinders binders
+              univ_tvs    = binderVars univ_bndrs
+              class_tycon = mkClassTyCon class_tycon_name binders roles
+                                         AbstractTyCon rec_clas
+                                         class_tc_rep_name
+              co_rhs_ty   = mkTyConApp (classTyCon rec_clas) (mkTyVarTys univ_tvs)
+              co          = mkDictToClassCoAxiom co_tycon_name
+                                                 (classDictTyCon rec_clas)
+                                                 univ_tvs roles co_rhs_ty
+              dict_tycon = mkAlgTyCon dict_tycon_name binders liftedTypeKind
+                                        roles Nothing [] AbstractTyCon
+                                        (DictTyCon rec_clas dict_tc_rep_nm co)
+                                        False
+              result = mkAbstractClass class_tycon_name univ_tvs fds
+                                       class_tycon dict_tycon
+        ; traceIf (text "buildClass" <+> ppr class_tycon <+> ppr dict_tycon)
         ; return result }
 
-buildClass tycon_name binders roles fds
-           (Just (sc_theta, at_items, sig_stuff, mindef))
+buildClass class_tycon_name dict_tycon_name binders roles fds
+           (Just (sc_theta, at_items, sig_stuff, mindef, dict_datacon_name,
+                  sc_fields))
   = fixM  $ \ rec_clas ->       -- Only name generation inside loop
     do  { traceIf (text "buildClass")
-
-        ; datacon_name <- newImplicitBinder tycon_name mkClassDataConOcc
-        ; tc_rep_name  <- newTyConRepName tycon_name
 
         ; op_items <- mapM (mk_op_item rec_clas) sig_stuff
                         -- Build the selector id and default method id
 
               -- Make selectors for the superclasses
-        ; sc_sel_names <- mapM  (newImplicitBinder tycon_name . mkSuperDictSelOcc)
+        ; sc_sel_names <- mapM  (newImplicitBinder class_tycon_name . mkSuperDictSelOcc)
                                 (takeList sc_theta [fIRST_TAG..])
         ; let sc_sel_ids = [ mkDictSelId sc_name rec_clas
                            | sc_name <- sc_sel_names]
@@ -284,7 +298,7 @@ buildClass tycon_name binders roles fds
               -- (We used to call them D_C, but now we can have two different
               --  superclasses both called C!)
 
-        ; let use_newtype = isSingleton arg_tys
+        ; let use_newtype = isSingleton class_arg_tys
                 -- Use a newtype if the data constructor
                 --   (a) has exactly one value field
                 --       i.e. exactly one operation or superclass taken together
@@ -296,42 +310,71 @@ buildClass tycon_name binders roles fds
                 -- That means that in the case of
                 --     class C a => D a
                 -- we don't get a newtype with no arguments!
-              args       = sc_sel_names ++ op_names
-              op_tys     = [ty | (_,ty,_) <- sig_stuff]
-              op_names   = [op | (op,_,_) <- sig_stuff]
-              arg_tys    = sc_theta ++ op_tys
-              rec_tycon  = classTyCon rec_clas
-              univ_bndrs = tyConTyVarBinders binders
-              univ_tvs   = binderVars univ_bndrs
+              args          = sc_sel_names ++ op_names
+              op_tys        = [ty | (_,ty,_) <- sig_stuff]
+              op_names      = [op | (op,_,_) <- sig_stuff]
+              univ_bndrs    = tyConTyVarBinders binders
+              univ_tvs      = binderVars univ_bndrs
+              class_arg_tys = sc_theta ++ op_tys
+              dict_arg_tys  = map replaceClassWithDict sc_theta ++ op_tys
 
-        ; rep_nm   <- newTyConRepName datacon_name
-        ; dict_con <- buildDataCon (panic "buildClass: FamInstEnvs")
-                                   datacon_name
-                                   False        -- Not declared infix
-                                   rep_nm
-                                   (map (const no_bang) args)
-                                   (Just (map (const HsLazy) args))
-                                   [{- No fields -}]
-                                   univ_tvs
-                                   [{- no existentials -}]
-                                   univ_bndrs
-                                   [{- No GADT equalities -}]
-                                   [{- No theta -}]
-                                   arg_tys
-                                   (mkTyConApp rec_tycon (mkTyVarTys univ_tvs))
-                                   rec_tycon
 
-        ; rhs <- case () of
-                  _ | use_newtype
-                    -> mkNewTyConRhs tycon_name rec_tycon dict_con
-                    | isCTupleTyConName tycon_name
-                    -> return (TupleTyCon { data_con = dict_con
-                                          , tup_sort = ConstraintTuple })
-                    | otherwise
-                    -> return (mkDataTyConRhs [dict_con])
+        ; let build_data_con datacon_name tycon arg_tys fields
+                = do { rep_nm <- newTyConRepName datacon_name
+                     ; buildDataCon (panic "buildClass: FamInstEnvs")
+                                    datacon_name
+                                    False        -- Not declared infix
+                                    rep_nm
+                                    (map (const no_bang) args)
+                                    (Just (map (const HsLazy) args))
+                                    fields
+                                    univ_tvs
+                                    [{- no existentials -}]
+                                    univ_bndrs
+                                    [{- No GADT equalities -}]
+                                    [{- No theta -}]
+                                    arg_tys
+                                    (mkTyConApp tycon (mkTyVarTys univ_tvs))
+                                    tycon }
 
-        ; let { tycon = mkClassTyCon tycon_name binders roles
-                                     rhs rec_clas tc_rep_name
+        ; class_datacon_name <- newImplicitBinder class_tycon_name
+                                                  mkClassDataConOcc
+        ; class_datacon <- build_data_con class_datacon_name
+                                          (classTyCon rec_clas)
+                                          class_arg_tys
+                                          [{- No fields -}]
+        ; let fields = map mk_field_label op_names
+        ; dict_datacon <- build_data_con dict_datacon_name
+                                         (classDictTyCon rec_clas)
+                                         dict_arg_tys
+                                         (sc_fields ++ fields)
+
+        ; let build_rhs tycon_name tycon datacon tup_sort
+                | use_newtype
+                = mkNewTyConRhs tycon_name tycon datacon
+                | isCTupleTyConName tycon_name
+                = return (TupleTyCon { data_con = datacon
+                                     , tup_sort = tup_sort })
+                | otherwise
+                = return (mkDataTyConRhs [datacon])
+
+        ; class_rhs <- build_rhs class_tycon_name (classTyCon rec_clas)
+                                 class_datacon ConstraintTuple
+        ; dict_rhs  <- build_rhs dict_tycon_name (classDictTyCon rec_clas)
+                                 dict_datacon BoxedTuple
+
+          -- TODOT proper name?
+        ; co_tycon_name <- newImplicitBinder dict_tycon_name mkDictClassCoOcc
+        ; let co_rhs_ty = mkTyConApp (classTyCon rec_clas) (mkTyVarTys univ_tvs)
+              co = mkDictToClassCoAxiom co_tycon_name (classDictTyCon rec_clas)
+                                        univ_tvs roles co_rhs_ty
+
+
+        ; class_tc_rep_nm <- newTyConRepName class_tycon_name
+        ; dict_tc_rep_nm  <- newTyConRepName dict_tycon_name
+
+        ; let { class_tycon = mkClassTyCon class_tycon_name binders roles
+                                           class_rhs rec_clas class_tc_rep_nm
                 -- A class can be recursive, and in the case of newtypes
                 -- this matters.  For example
                 --      class C a where { op :: C b => a -> b -> Int }
@@ -340,12 +383,17 @@ buildClass tycon_name binders roles fds
                 -- [If we don't make it a recursive newtype, we'll expand the
                 -- newtype like a synonym, but that will lead to an infinite
                 -- type]
+              ; dict_tycon = mkAlgTyCon dict_tycon_name binders liftedTypeKind
+                                        roles Nothing [] dict_rhs
+                                        (DictTyCon rec_clas dict_tc_rep_nm co)
+                                        False
 
-              ; result = mkClass tycon_name univ_tvs fds
+              ; result = mkClass class_tycon_name univ_tvs fds
                                  sc_theta sc_sel_ids at_items
-                                 op_items mindef tycon
+                                 op_items mindef class_tycon dict_tycon
+                                 sc_fields
               }
-        ; traceIf (text "buildClass" <+> ppr tycon)
+        ; traceIf (text "buildClass" <+> ppr class_tycon <+> ppr dict_tycon)
         ; return result }
   where
     no_bang = HsSrcBang NoSourceText NoSrcUnpack NoSrcStrict
@@ -365,6 +413,13 @@ buildClass tycon_name binders roles fds
     mk_dm_info op_name (Just (GenericDM (loc, dm_ty)))
       = do { dm_name <- newImplicitBinderLoc op_name mkDefaultMethodOcc loc
            ; return (Just (dm_name, GenericDM dm_ty)) }
+
+    mk_field_label :: Name -> FieldLabel
+    mk_field_label op_name
+      = FieldLabel
+          { flLabel = occNameFS (nameOccName op_name)
+          , flIsOverloaded = True  -- TODOT
+          , flSelector = op_name }
 
 {-
 Note [Class newtypes and equality predicates]

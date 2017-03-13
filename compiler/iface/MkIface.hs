@@ -1731,13 +1731,15 @@ classToIfaceDecl env clas
   = ( env1
     , IfaceClass { ifName   = getName tycon,
                    ifRoles  = tyConRoles (classTyCon clas),
+                   ifDictTCName = getName dict_tycon,
                    ifBinders = toIfaceTyVarBinders tc_binders,
                    ifBody   = body,
                    ifFDs    = map toIfaceFD clas_fds })
   where
-    (_, clas_fds, sc_theta, _, clas_ats, op_stuff)
+    (_, clas_fds, sc_theta, _, clas_ats, op_stuff, sc_fields)
       = classExtraBigSig clas
     tycon = classTyCon clas
+    dict_tycon = classDictTyCon clas
 
     body | isAbstractTyCon tycon = IfAbstractClass
          | otherwise
@@ -1745,8 +1747,13 @@ classToIfaceDecl env clas
                 ifClassCtxt   = tidyToIfaceContext env1 sc_theta,
                 ifATs    = map toIfaceAT clas_ats,
                 ifSigs   = map toIfaceClassOp op_stuff,
-                ifMinDef = fmap getOccFS (classMinimalDef clas)
+                ifMinDef = fmap getOccFS (classMinimalDef clas),
+                ifDictDCName = getName dict_datacon,
+                ifDictDCWrapper = isJust (dataConWrapId_maybe dict_datacon),
+                ifDictSCFields = sc_fields
             }
+      where
+        dict_datacon = tyConSingleDataCon dict_tycon
 
     (env1, tc_binders) = tidyTyConBinders env (tyConBinders tycon)
 

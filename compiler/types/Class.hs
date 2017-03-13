@@ -18,7 +18,7 @@ module Class (
         classKey, className, classATs, classATItems, classTyCon, classMethods,
         classOpItems, classBigSig, classExtraBigSig, classTvsFds, classSCTheta,
         classAllSelIds, classSCSelId, classMinimalDef, classHasFds,
-        isAbstractClass,
+        classDictTyCon, isAbstractClass,
     ) where
 
 #include "HsVersions.h"
@@ -30,6 +30,7 @@ import {-# SOURCE #-} TyCoRep   ( Type, PredType, pprType )
 import Var
 import Name
 import BasicTypes
+import FieldLabel (FieldLabel)
 import Unique
 import Util
 import SrcLoc
@@ -53,7 +54,7 @@ data Class
         classTyCon :: TyCon,    -- The data type constructor for
                                 -- dictionaries of this class
                                 -- See Note [ATyCon for classes] in TyCoRep
-
+        classDictTyCon :: TyCon,      -- TODOT
         className :: Name,              -- Just the cached name of the TyCon
         classKey  :: Unique,            -- Cached unique of TyCon
 
@@ -118,7 +119,11 @@ data ClassBody
         classOpStuff :: [ClassOpItem],  -- Ordered by tag
 
         -- Minimal complete definition
-        classMinimalDefStuff :: ClassMinimalDef
+        classMinimalDefStuff :: ClassMinimalDef,
+
+        -- The superclass fields of the dictionary record, i.e. parent1,
+        -- parent2, ...
+        classDictSCFields :: [FieldLabel]
     }
     -- TODO: maybe super classes should be allowed in abstract class definitions
 
@@ -169,11 +174,13 @@ mkClass :: Name -> [TyVar]
         -> [ClassATItem]
         -> [ClassOpItem]
         -> ClassMinimalDef
-        -> TyCon
+        -> TyCon  -- Class tc
+        -> TyCon  -- Dictionary tc
+        -> [FieldLabel]  -- Superclass fields of the dictionary record
         -> Class
 
 mkClass cls_name tyvars fds super_classes superdict_sels at_stuff
-        op_stuff mindef tycon
+        op_stuff mindef class_tycon dict_tycon sc_fields
   = Class { classKey     = nameUnique cls_name,
             className    = cls_name,
                 -- NB:  tyConName tycon = cls_name,
@@ -185,16 +192,19 @@ mkClass cls_name tyvars fds super_classes superdict_sels at_stuff
                     classSCSels  = superdict_sels,
                     classATStuff = at_stuff,
                     classOpStuff = op_stuff,
-                    classMinimalDefStuff = mindef
+                    classMinimalDefStuff = mindef,
+                    classDictSCFields = sc_fields
                 },
-            classTyCon   = tycon }
+            classTyCon     = class_tycon,
+            classDictTyCon = dict_tycon }
 
 mkAbstractClass :: Name -> [TyVar]
         -> [FunDep TyVar]
-        -> TyCon
+        -> TyCon  -- Class tc
+        -> TyCon  -- Dictionary ty
         -> Class
 
-mkAbstractClass cls_name tyvars fds tycon
+mkAbstractClass cls_name tyvars fds class_tycon dict_tycon
   = Class { classKey     = nameUnique cls_name,
             className    = cls_name,
                 -- NB:  tyConName tycon = cls_name,
@@ -202,7 +212,8 @@ mkAbstractClass cls_name tyvars fds tycon
             classTyVars  = tyvars,
             classFunDeps = fds,
             classBody = AbstractClass,
-            classTyCon   = tycon }
+            classTyCon     = class_tycon,
+            classDictTyCon = dict_tycon }
 
 {-
 Note [Associated type tyvar names]
@@ -295,16 +306,17 @@ classBigSig (Class {classTyVars = tyvars,
                     }})
   = (tyvars, sc_theta, sc_sels, op_stuff)
 
-classExtraBigSig :: Class -> ([TyVar], [FunDep TyVar], [PredType], [Id], [ClassATItem], [ClassOpItem])
+classExtraBigSig :: Class -> ([TyVar], [FunDep TyVar], [PredType], [Id], [ClassATItem], [ClassOpItem], [FieldLabel])
 classExtraBigSig (Class {classTyVars = tyvars, classFunDeps = fundeps,
                          classBody = AbstractClass})
-  = (tyvars, fundeps, [], [], [], [])
+  = (tyvars, fundeps, [], [], [], [], [])
 classExtraBigSig (Class {classTyVars = tyvars, classFunDeps = fundeps,
                          classBody = ConcreteClass {
                              classSCThetaStuff = sc_theta, classSCSels = sc_sels,
-                             classATStuff = ats, classOpStuff = op_stuff
+                             classATStuff = ats, classOpStuff = op_stuff,
+                             classDictSCFields = sc_fields
                          }})
-  = (tyvars, fundeps, sc_theta, sc_sels, ats, op_stuff)
+  = (tyvars, fundeps, sc_theta, sc_sels, ats, op_stuff, sc_fields)
 
 isAbstractClass :: Class -> Bool
 isAbstractClass Class{ classBody = AbstractClass } = True

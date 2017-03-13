@@ -1542,14 +1542,24 @@ rnTyClDecl (DataDecl { tcdLName = tycon, tcdTyVars = tyvars,
                           , tcdFVs = fvs }, fvs) } }
 
 rnTyClDecl (ClassDecl { tcdCtxt = context, tcdLName = lcls,
+                        tcdLDictTy = dict_ty, tcdLDictCon = dict_con,
+                        tcdSCFields = sc_fields,
                         tcdTyVars = tyvars, tcdFixity = fixity,
                         tcdFDs = fds, tcdSigs = sigs,
                         tcdMeths = mbinds, tcdATs = ats, tcdATDefs = at_defs,
                         tcdDocs = docs})
   = do  { lcls' <- lookupLocatedTopBndrRn lcls
+        ; dict_ty' <- lookupLocatedTopBndrRn dict_ty
+        ; dict_con' <- lookupLocatedTopBndrRn dict_con
         ; let cls' = unLoc lcls'
               kvs = []  -- No scoped kind vars except those in
                         -- kind signatures on the tyvars
+
+        -- Rename the superclass fields of the dictionary record, i.e.
+        -- parent1, parent2, ...
+        ; sc_fls <- lookupConstructorFields (unLoc dict_con')
+        ; let sc_fl_env = mkFsEnv [ (flLabel sc_fl, sc_fl) | sc_fl <- sc_fls ]
+              sc_fields' = map (lookupField sc_fl_env) sc_fields
 
         -- Tyvars scope over superclass context and method signatures
         ; ((tyvars', context', fds', ats'), stuff_fvs)
@@ -1597,6 +1607,8 @@ rnTyClDecl (ClassDecl { tcdCtxt = context, tcdLName = lcls,
 
         ; let all_fvs = meth_fvs `plusFV` stuff_fvs `plusFV` fv_at_defs
         ; return (ClassDecl { tcdCtxt = context', tcdLName = lcls',
+                              tcdLDictTy = dict_ty', tcdLDictCon = dict_con',
+                              tcdSCFields = sc_fields',
                               tcdTyVars = tyvars', tcdFixity = fixity,
                               tcdFDs = fds', tcdSigs = sigs',
                               tcdMeths = mbinds', tcdATs = ats', tcdATDefs = at_defs',

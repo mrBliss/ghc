@@ -214,7 +214,7 @@ tcTyClDecls tyclds role_annots
              tcExtendKindEnv (foldl extendEnvWithTcTyCon emptyNameEnv tc_tycons) $
 
                  -- Kind and type check declarations for this group
-               mapM (tcTyClDecl roles) tyclds
+             concatMapM (tcTyClDecl roles) tyclds
            } }
   where
     ppr_tc_tycon tc = parens (sep [ ppr (tyConName tc) <> comma
@@ -440,10 +440,12 @@ kcTyClGroup decls
     generaliseTCD :: TcTypeEnv
                   -> LTyClDecl GhcRn -> TcM [TcTyCon]
     generaliseTCD kind_env (L _ decl)
-      | ClassDecl { tcdLName = (L _ name), tcdATs = ats } <- decl
+      | ClassDecl { tcdLName = (L _ name), tcdLDictTy = (L _ dict)
+                  , tcdATs = ats } <- decl
       = do { first <- generalise kind_env name
+           ; let second = mkDictTyCon dict first
            ; rest <- mapM ((generaliseFamDecl kind_env) . unLoc) ats
-           ; return (first : rest) }
+           ; return (first : second : rest) }
 
       | FamDecl { tcdFam = fam } <- decl
       = do { res <- generaliseFamDecl kind_env fam
@@ -471,6 +473,20 @@ extendEnvWithTcTyCon env tc
   = extendNameEnv env (getName tc) (ATcTyCon tc)
 
 --------------
+-- TODOT where to put it?
+-- | Given a class TyCon, make the corresponding dictionary TyCon with the
+-- given name. The class TyCon has result kind Constraint whereas the
+-- dictionary TyCon has result kind *.
+mkDictTyCon :: Name -> TyCon -> TyCon
+mkDictTyCon name tc = tc
+    { tyConUnique  = getUnique name
+    , tyConName    = name
+    , tyConKind    = mkTyConKind (tyConBinders tc) liftedTypeKind
+    , tyConResKind = liftedTypeKind
+       -- TODOT second argument is the res_kind, is * always correct?
+    }
+
+--------------
 mkPromotionErrorEnv :: [LTyClDecl GhcRn] -> TcTypeEnv
 -- Maps each tycon/datacon to a suitable promotion error
 --    tc :-> APromotionErr TyConPE
@@ -483,7 +499,7 @@ mkPromotionErrorEnv decls
 
 mk_prom_err_env :: TyClDecl GhcRn -> TcTypeEnv
 mk_prom_err_env (ClassDecl { tcdLName = L _ nm, tcdATs = ats })
-  = unitNameEnv nm (APromotionErr ClassPE)
+  = unitNameEnv nm (APromotionErr ClassPE) -- TODOT add dicts?
     `plusNameEnv`
     mkNameEnv [ (name, APromotionErr TyConPE)
               | L _ (FamilyDecl { fdLName = L _ name }) <- ats ]
@@ -531,13 +547,16 @@ getInitialKind :: TyClDecl GhcRn
 --
 -- No family instances are passed to getInitialKinds
 
-getInitialKind decl@(ClassDecl { tcdLName = L _ name, tcdTyVars = ktvs, tcdATs = ats })
+getInitialKind decl@(ClassDecl { tcdLName = L _ name, tcdTyVars = ktvs
+                               , tcdLDictTy = L _ dict, tcdATs = ats })
   = do { let cusk = hsDeclHasCusk decl
        ; (tycon, inner_prs) <-
            kcLHsQTyVars name ClassFlavour cusk True ktvs $
            do { inner_prs <- getFamDeclInitialKinds (Just cusk) ats
               ; return (constraintKind, inner_prs) }
-       ; return (extendEnvWithTcTyCon inner_prs tycon) }
+       ; let dictTyCon = mkDictTyCon dict tycon
+       ; return (extendEnvWithTcTyCon
+                 (extendEnvWithTcTyCon inner_prs tycon) dictTyCon) }
 
 getInitialKind decl@(DataDecl { tcdLName = L _ name
                               , tcdTyVars = ktvs
@@ -798,11 +817,12 @@ e.g. the need to make the data constructor worker name for
      a constraint tuple match the wired-in one
 -}
 
-tcTyClDecl :: RolesInfo -> LTyClDecl GhcRn -> TcM TyCon
+tcTyClDecl :: RolesInfo -> LTyClDecl GhcRn -> TcM [TyCon]
 tcTyClDecl roles_info (L loc decl)
   | Just thing <- wiredInNameTyThing_maybe (tcdName decl)
   = case thing of -- See Note [Declarations for wired-in things]
-      ATyCon tc -> return tc
+      ATyCon tc -> let mbDictTyCon = fmap classDictTyCon (tyConClass_maybe tc)
+                   in return (tc : maybeToList mbDictTyCon)
       _ -> pprPanic "tcTyClDecl" (ppr thing)
 
   | otherwise
@@ -811,26 +831,28 @@ tcTyClDecl roles_info (L loc decl)
        ; tcTyClDecl1 Nothing roles_info decl }
 
   -- "type family" declarations
-tcTyClDecl1 :: Maybe Class -> RolesInfo -> TyClDecl GhcRn -> TcM TyCon
+tcTyClDecl1 :: Maybe Class -> RolesInfo -> TyClDecl GhcRn -> TcM [TyCon]
 tcTyClDecl1 parent _roles_info (FamDecl { tcdFam = fd })
-  = tcFamDecl1 parent fd
+  = fmap return (tcFamDecl1 parent fd)
 
   -- "type" synonym declaration
 tcTyClDecl1 _parent roles_info
             (SynDecl { tcdLName = L _ tc_name, tcdRhs = rhs })
   = ASSERT( isNothing _parent )
     tcTyClTyVars tc_name $ \ binders res_kind ->
-    tcTySynRhs roles_info tc_name binders res_kind rhs
+    fmap return (tcTySynRhs roles_info tc_name binders res_kind rhs)
 
   -- "data/newtype" declaration
 tcTyClDecl1 _parent roles_info
             (DataDecl { tcdLName = L _ tc_name, tcdDataDefn = defn })
   = ASSERT( isNothing _parent )
     tcTyClTyVars tc_name $ \ tycon_binders res_kind ->
-    tcDataDefn roles_info tc_name tycon_binders res_kind defn
+    fmap return (tcDataDefn roles_info tc_name tycon_binders res_kind defn)
 
 tcTyClDecl1 _parent roles_info
             (ClassDecl { tcdLName = L _ class_name
+            , tcdLDictTy = L _ dict_ty_name
+            , tcdLDictCon = L _ dict_con_name
             , tcdCtxt = ctxt, tcdMeths = meths
             , tcdFDs = fundeps, tcdSigs = sigs
             , tcdATs = ats, tcdATDefs = at_defs })
@@ -850,6 +872,7 @@ tcTyClDecl1 _parent roles_info
                ; sig_stuff <- tcClassSigs class_name sigs meths
                ; at_stuff <- tcClassATs class_name clas ats at_defs
                ; mindef <- tcClassMinimalDef class_name sigs sig_stuff
+               ; sc_fields <- lookupConstructorFields dict_con_name
                -- TODO: Allow us to distinguish between abstract class,
                -- and concrete class with no methods (maybe by
                -- specifying a trailing where or not
@@ -857,13 +880,15 @@ tcTyClDecl1 _parent roles_info
                ; let body | is_boot, null ctxt', null at_stuff, null sig_stuff
                           = Nothing
                           | otherwise
-                          = Just (ctxt', at_stuff, sig_stuff, mindef)
-               ; clas <- buildClass class_name binders roles fds' body
+                          = Just (ctxt', at_stuff, sig_stuff, mindef,
+                                  dict_con_name, sc_fields)
+               ; clas <- buildClass class_name dict_ty_name binders roles
+                                    fds' body
                ; traceTc "tcClassDecl" (ppr fundeps $$ ppr binders $$
                                         ppr fds')
                ; return clas }
 
-         ; return (classTyCon clas) }
+         ; return [classTyCon clas, classDictTyCon clas] }
   where
     tc_fundep (tvs1, tvs2) = do { tvs1' <- mapM (tcLookupTyVar . unLoc) tvs1 ;
                                 ; tvs2' <- mapM (tcLookupTyVar . unLoc) tvs2 ;
@@ -2573,7 +2598,10 @@ checkValidDataCon dflags existential_ok tc con
         ; checkValidMonoType orig_res_ty
 
           -- Check all argument types for validity
-        ; checkValidType ctxt (dataConUserType con)
+          -- Don't complain about higher-rank types in dictionary data types,
+          -- as we already happily allow them in type classes.
+        ; (if isDictTyCon tc then setXOptM LangExt.RankNTypes else id) $
+          checkValidType ctxt (dataConUserType con)
         ; mapM_ (checkForLevPoly empty)
                 (dataConOrigArgTys con)
 
@@ -2734,7 +2762,7 @@ checkValidClass cls
         -- Check the associated type defaults are well-formed and instantiated
         ; mapM_ check_at at_stuff  }
   where
-    (tyvars, fundeps, theta, _, at_stuff, op_stuff) = classExtraBigSig cls
+    (tyvars, fundeps, theta, _, at_stuff, op_stuff, _) = classExtraBigSig cls
     cls_arity = length (tyConVisibleTyVars (classTyCon cls))
        -- Ignore invisible variables
     cls_tv_set = mkVarSet tyvars
