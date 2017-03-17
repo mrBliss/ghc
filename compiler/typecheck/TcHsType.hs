@@ -10,7 +10,7 @@
 
 module TcHsType (
         -- Type signatures
-        kcHsSigType, tcClassSigType,
+        kcHsSigType, tcClassSigType, tcClassAnnType,
         tcHsSigType, tcHsSigWcType,
         tcHsPartialSigType,
         funsSigCtxt, addSigCtxt, pprSigCtxt,
@@ -273,6 +273,12 @@ tc_hs_sig_type skol_info (HsIB { hsib_ext = HsIBRn { hsib_vars = sig_vars }
        ; zonkPromoteType (mkSpecForAllTys tkvs ty) }
 
 tc_hs_sig_type _ (XHsImplicitBndrs _) _ = panic "tc_hs_sig_type"
+
+tcClassAnnType :: LHsSigType GhcRn -> TcM Type
+tcClassAnnType sig_ty
+  = addSigCtxt GhciCtxt {- TODOT -} (hsSigType sig_ty) $
+    tc_hs_sig_type_and_gen UnkSkol {- TODOT -} sig_ty constraintKind
+
 
 -----------------
 tcHsDeriv :: LHsSigType GhcRn -> TcM ([TyVar], (Class, [Type], [Kind]))

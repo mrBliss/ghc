@@ -21,7 +21,7 @@ module DsBinds ( dsTopLHsBinds, dsLHsBinds, decomposeRuleLhs, dsSpec,
 
 import GhcPrelude
 
-import {-# SOURCE #-}   DsExpr( dsLExpr )
+import {-# SOURCE #-}   DsExpr( dsLExpr, dsExpr )
 import {-# SOURCE #-}   Match( matchWrapper )
 
 import DsMonad
@@ -1194,7 +1194,7 @@ dsEvTerm (EvFun { et_tvs = tvs, et_given = given
        ; return $ (mkLams (tvs ++ given) $
                    mkCoreLets ds_ev_binds $
                    Var wanted_id) }
-
+dsEvTerm (EvDictionary (EvDict dict) co) = (`mkCastDs` co) <$> dsExpr dict
 
 {-**********************************************************************
 *                                                                      *

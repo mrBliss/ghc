@@ -161,6 +161,10 @@ rnExpr (HsOverLit x lit)
               Just neg -> return (HsApp x (noLoc neg) (noLoc (HsOverLit x lit'))
                                  , fvs ) }
 
+rnExpr e@(HsApp _ e1 (L _ (HsPar _ (L _ (HsPar _ (L _ (ExprWithTySig (HsWC _ sig) e2)))))))
+  = do { traceRn "DICT APP FOUND, REPLACING WITH HsAppDict" (ppr e)
+       ; rnExpr (HsAppDict e1 e2 (Just sig)) }
+
 rnExpr (HsApp x fun arg)
   = do { (fun',fvFun) <- rnLExpr fun
        ; (arg',fvArg) <- rnLExpr arg
@@ -170,6 +174,14 @@ rnExpr (HsAppType arg fun)
   = do { (fun',fvFun) <- rnLExpr fun
        ; (arg',fvArg) <- rnHsWcType HsTypeCtx arg
        ; return (HsAppType arg' fun', fvFun `plusFV` fvArg) }
+
+rnExpr (HsAppDict fun arg mb_ty)
+  = do { (fun',fvFun)  <- rnLExpr fun
+       ; (arg',fvArg)  <- rnLExpr arg
+       ; (mb_ty',fvTy) <- case mb_ty of
+           Just ty -> liftFst Just <$> rnHsSigType PatCtx {- TODOT -} ty
+           Nothing -> return (Nothing, emptyFVs)
+       ; return (HsAppDict fun' arg' mb_ty', fvFun `plusFV` fvArg `plusFV` fvTy) }
 
 rnExpr (OpApp _ e1 op e2)
   = do  { (e1', fv_e1) <- rnLExpr e1

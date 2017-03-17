@@ -335,6 +335,12 @@ data HsExpr p
        --
        -- - 'ApiAnnotation.AnnKeywordId' : 'ApiAnnotation.AnnAt',
 
+  | HsAppDict    (LHsExpr p)
+                 (LHsExpr p)             -- ^ Dictionary to apply
+                 (Maybe (XAppDict p))    -- ^ Optional type-class constraint
+                                         -- annotation of the dictionary.
+    -- TODOT Annotation crap
+
   -- | Operator applications:
   -- NB Bracketed ops such as (+) come out as Vars.
 
@@ -716,6 +722,10 @@ type instance XLam           (GhcPass _) = NoExt
 type instance XLamCase       (GhcPass _) = NoExt
 type instance XApp           (GhcPass _) = NoExt
 
+type instance XAppDict       GhcPs = LHsSigType GhcPs
+type instance XAppDict       GhcRn = LHsSigType GhcRn
+type instance XAppDict       GhcTc = LHsSigType GhcRn
+
 type instance XAppTypeE      GhcPs = LHsWcType GhcPs
 type instance XAppTypeE      GhcRn = LHsWcType GhcRn
 type instance XAppTypeE      GhcTc = LHsWcType GhcRn
@@ -950,6 +960,7 @@ ppr_expr (HsCoreAnn _ stc (StringLiteral sta s) e)
 
 ppr_expr e@(HsApp {})        = ppr_apps e []
 ppr_expr e@(HsAppType {})    = ppr_apps e []
+ppr_expr e@(HsAppDict {})    = ppr_apps e []
 
 ppr_expr (OpApp _ e1 op e2)
   | Just pp_op <- should_print_infix (unLoc op)
@@ -1162,6 +1173,8 @@ ppr_apps (HsApp _ (L _ fun) arg)        args
   = ppr_apps fun (Left arg : args)
 ppr_apps (HsAppType arg (L _ fun))    args
   = ppr_apps fun (Right arg : args)
+ppr_apps (HsAppDict (L _ fun) dict _mb_ty) args -- TODOT
+  = ppr_apps fun (Left dict : args)
 ppr_apps fun args = hang (ppr_expr fun) 2 (sep (map pp args))
   where
     pp (Left arg)                             = ppr arg
@@ -1221,6 +1234,7 @@ hsExprNeedsParens p = go
     go (HsCoreAnn _ _ _ (L _ e))      = go e
     go (HsApp{})                      = p >= appPrec
     go (HsAppType {})                 = p >= appPrec
+    go (HsAppDict {})                 = p >= appPrec
     go (OpApp{})                      = p >= opPrec
     go (NegApp{})                     = p > topPrec
     go (SectionL{})                   = True

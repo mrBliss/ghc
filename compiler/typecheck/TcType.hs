@@ -108,6 +108,9 @@ module TcType (
   candidateQTyVarsOfType, candidateQTyVarsOfTypes, CandidatesQTvs(..),
   anyRewritableTyVar,
 
+  -- * Getting the roles of type variables in a type
+  getTyVarRolesIn,
+
   ---------------------------------
   -- Foreign import and export
   isFFIArgumentTy,     -- :: DynFlags -> Safety -> Type -> Bool
@@ -2710,3 +2713,44 @@ isNextArgVisible ty
   | otherwise                              = True
     -- this second case might happen if, say, we have an unzonked TauTv.
     -- But TauTvs can't range over types that take invisible arguments
+
+
+{- *********************************************************************
+*                                                                      *
+          Getting the roles of type variables in a type
+*                                                                      *
+********************************************************************* -}
+
+
+-- TODOT Document that this doesn't belong with inferRoles in TcTyDecls,
+-- because this function is used after the roles have already been inferred.
+getTyVarRolesIn :: [TyVar] -> Type -> [Role]
+getTyVarRolesIn tvs ty = map (lookupVarEnv_NF end_env) tvs
+  where
+    init_env = mkVarEnv (zip tvs (repeat Phantom))
+    end_env = go ty init_env
+    max_role r1 r2 | ltRole r1 r2 = r1
+                   | otherwise    = r2
+    try_update_role :: Type -> Role -> TyVarEnv Role -> TyVarEnv Role
+    try_update_role ty role env
+      | Just tv <- getTyVar_maybe ty
+      = modifyVarEnv (`max_role` role) env tv -- If it's not in the env, it's
+      | otherwise                             -- not updated
+      = env
+
+    go :: Type -> TyVarEnv Role -> TyVarEnv Role
+    go (TyConApp tc args) env
+      = let env' = foldr (uncurry try_update_role) env
+                         (zip args (tyConRoles tc))
+        in foldr go env' args
+    go (FunTy t1 t2) env
+      = try_update_role t1 Representational $
+        try_update_role t2 Representational $
+        go t2 (go t1 env)
+    go (ForAllTy _ ty) env = go ty env
+    go (AppTy t1 t2) env = go t2 (go t1 env)
+    -- Nothing special
+    go (TyVarTy {}) env = env
+    go (LitTy {}) env = env
+    go (CastTy {}) env = env
+    go (CoercionTy {}) env = env

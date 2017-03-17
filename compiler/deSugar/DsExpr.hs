@@ -306,6 +306,11 @@ ds_expr _ (HsAppType _ e)
     -- ignore type arguments here; they're in the wrappers instead at this point
   = dsLExpr e
 
+ds_expr _ e@(HsAppDict fun e_dict _)
+  = mkCoreAppDs (text "HsAppDict" <+> ppr e) <$>
+    dsLExpr fun <*>
+    dsLExprNoLP e_dict
+
 {-
 Note [Desugaring vars]
 ~~~~~~~~~~~~~~~~~~~~~~

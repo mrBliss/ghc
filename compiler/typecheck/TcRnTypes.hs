@@ -3545,6 +3545,7 @@ exprCtOrigin (HsLam _ matches)    = matchesCtOrigin matches
 exprCtOrigin (HsLamCase _ ms)     = matchesCtOrigin ms
 exprCtOrigin (HsApp _ e1 _)       = lexprCtOrigin e1
 exprCtOrigin (HsAppType _ e1)     = lexprCtOrigin e1
+exprCtOrigin (HsAppDict _ d _)    = lexprCtOrigin d
 exprCtOrigin (OpApp _ _ op _)     = lexprCtOrigin op
 exprCtOrigin (NegApp _ e _)       = lexprCtOrigin e
 exprCtOrigin (HsPar _ e)          = lexprCtOrigin e

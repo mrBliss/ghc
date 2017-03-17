@@ -21,11 +21,13 @@ module TcEvidence (
   -- EvTerm (already a CoreExpr)
   EvTerm(..), EvExpr,
   evId, evCoercion, evCast, evDFunApp,  evSelector,
-  mkEvCast, evVarsOfTerm, mkEvScSelectors, evTypeable, findNeededEvVars,
+  mkEvCast, evVarsOfTerm, mkEvScSelectors, evTypeable, evDictionary,
+  findNeededEvVars,
 
   evTermCoercion, evTermCoercion_maybe,
   EvCallStack(..),
   EvTypeable(..),
+  EvDict(..),
 
   -- TcCoercion
   TcCoercion, TcCoercionR, TcCoercionN, TcCoercionP, CoercionHole,
@@ -55,6 +57,8 @@ import TcType
 import Type
 import TyCon
 import Class( Class )
+import {-# SOURCE #-} HsExpr( HsExpr )
+import HsExtension ( GhcTc )
 import PrelNames
 import DynFlags   ( gopt, GeneralFlag(Opt_PrintTypecheckerElaboration) )
 import VarEnv
@@ -519,9 +523,53 @@ data EvTerm
                               -- constructor, and can't just use EvExpr
       , et_body  :: EvVar }
 
+  | EvDictionary EvDict TcCoercion  -- Explicitly passed dictionary and a
+                                    -- coercion from the dictionary to the
+                                    -- corresponding type class.
+                                    -- See Note [EvDict]
+
   deriving Data.Data
 
 type EvExpr = CoreExpr
+
+-- Note [EvDict]
+-- ~~~~~~~~~~~~~
+--
+-- The evidence of an explicit dictionary application is the expression
+-- representing the dictionary. However, this expression is an HsExpr, not an
+-- EvExpr (or CoreExpr). We can't simply desugar this HsExpr into an EvExpr
+-- before we use it to make evidence, as desugaring happens later, and we
+-- don't want to do a separate mini-desugaring for each dictionary
+-- application.
+--
+-- We solve this here by embedding the HsExpr in the EvTerm, using the new
+-- EvDictionary constructor. Unfortunately, the `deriving Data.Data`
+-- declaration for EvTerm is problematic, as the Data instance for HsExpr is
+-- defined in the HsInstances module, which we'd rather not pull in.
+--
+-- For now, we simply define an EvDict newtype wrapping an HsExpr. The EvDict
+-- type has a dummy Data instance, similar to TcEvBinds's Data instance.
+--
+-- In every dictionary application the dictionary is cast using a coercion
+-- from the dictionary to the corresponding type class. However, a cast, which
+-- is done using the evCast function, takes an EvExpr and not an EvTerm.
+-- That's why we store the coercion in the EvDictionary constructor of EvTerm.
+--
+-- During the desugaring of the EvTerm we can desugar the HsExpr contained in
+-- the EvDict, and then cast it using the coercion.
+--
+-- TODOT find a better solution
+newtype EvDict = EvDict (HsExpr GhcTc)
+
+-- See Note [EvDict]
+instance Data.Data EvDict where
+  toConstr _   = abstractConstr "EvDict"
+  gunfold _ _  = error "gunfold"
+  dataTypeOf _ = Data.mkNoRepType "EvDict"
+
+instance Outputable EvDict where
+  ppr (EvDict _e) = pprPanic "TODOT" empty
+
 
 -- An EvTerm is (usually) constructed by any of the constructors here
 -- and those more complicates ones who were moved to module TcEvTerm
@@ -554,6 +602,9 @@ evSelector sel_id tys tms = Var sel_id `mkTyApps` tys `mkApps` tms
 -- Dictionary for (Typeable ty)
 evTypeable :: Type -> EvTypeable -> EvTerm
 evTypeable = EvTypeable
+
+evDictionary :: HsExpr GhcTc -> TcCoercion -> EvTerm
+evDictionary dict = EvDictionary (EvDict dict)
 
 -- | Instructions on how to make a 'Typeable' dictionary.
 -- See Note [Typeable evidence terms]
@@ -843,6 +894,7 @@ evVarsOfTerm :: EvTerm -> VarSet
 evVarsOfTerm (EvExpr e)         = exprSomeFreeVars isEvVar e
 evVarsOfTerm (EvTypeable _ ev)  = evVarsOfTypeable ev
 evVarsOfTerm (EvFun {})         = emptyVarSet -- See Note [Free vars of EvFun]
+evVarsOfTerm (EvDictionary {})  = emptyVarSet  -- TODOT
 
 evVarsOfTerms :: [EvTerm] -> VarSet
 evVarsOfTerms = mapUnionVarSet evVarsOfTerm
@@ -940,6 +992,7 @@ instance Outputable EvTerm where
   ppr (EvFun { et_tvs = tvs, et_given = gs, et_binds = bs, et_body = w })
       = hang (text "\\" <+> sep (map pprLamBndr (tvs ++ gs)) <+> arrow)
            2 (ppr bs $$ ppr w)   -- Not very pretty
+  ppr (EvDictionary {})  = empty -- TODOT
 
 instance Outputable EvCallStack where
   ppr EvCsEmpty

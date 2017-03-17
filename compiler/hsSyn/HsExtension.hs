@@ -497,6 +497,7 @@ type family XLitE           x
 type family XLam            x
 type family XLamCase        x
 type family XApp            x
+type family XAppDict        x
 type family XAppTypeE       x
 type family XOpApp          x
 type family XNegApp         x
@@ -547,6 +548,7 @@ type ForallXExpr (c :: * -> Constraint) (x :: *) =
        , c (XLam            x)
        , c (XLamCase        x)
        , c (XApp            x)
+       , c (XAppDict        x)
        , c (XAppTypeE       x)
        , c (XOpApp          x)
        , c (XNegApp         x)
