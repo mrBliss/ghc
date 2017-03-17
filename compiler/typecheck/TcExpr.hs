@@ -32,7 +32,7 @@ import BasicTypes
 import Inst
 import TcBinds          ( chooseInferredQuantifiers, tcLocalBinds )
 import TcSigs           ( tcUserTypeSig, tcInstSig )
-import TcSimplify       ( simplifyInfer, InferMode(..) )
+import TcSimplify       ( simplifyInfer, simplifyTop, InferMode(..) )
 import FamInst          ( tcGetFamInstEnvs, tcLookupDataFamInst )
 import FamInstEnv       ( FamInstEnvs )
 import RnEnv            ( addUsedGRE )
@@ -55,6 +55,7 @@ import Name
 import NameEnv
 import NameSet
 import RdrName
+import Coercion( ltRole )
 import TyCon
 import TyCoRep
 import Type
@@ -172,6 +173,7 @@ tcExpr e@(HsUnboundVar uv)  res_ty = tcUnboundId e uv res_ty
 
 tcExpr e@(HsApp {})     res_ty = tcApp1 e res_ty
 tcExpr e@(HsAppType {}) res_ty = tcApp1 e res_ty
+tcExpr e@(HsAppDict {}) res_ty = tcApp1 e res_ty
 
 tcExpr e@(HsLit lit) res_ty
   = do { let lit_ty = hsLitType lit
@@ -1123,16 +1125,21 @@ arithSeqEltType (Just fl) res_ty
 ************************************************************************
 -}
 
-data HsArg tm ty
-  = HsValArg tm   -- Argument is an ordinary expression     (f arg)
-  | HsTypeArg  ty -- Argument is a visible type application (f @ty)
+data HsArg id
+  = HsValArg (LHsExpr id)
+    -- ^ Argument is an ordinary expression: (f arg)
+  | HsTypeArg (LHsWcType GhcRn)
+    -- ^ Argument is a visible type application: (f @ty)
+  | HsDictArg (LHsExpr id) (Maybe (LHsSigType id))
+    -- ^ Argument is a dictionary with an optional constraint annotation:  (TODOT other name?)
+    -- (f @{dict as ty})
 
-isHsValArg :: HsArg tm ty -> Bool
+isHsValArg :: HsArg tm -> Bool
 isHsValArg (HsValArg {}) = True
-isHsValArg (HsTypeArg {}) = False
+isHsValArg _ = False
 
-type LHsExprArgIn  = HsArg (LHsExpr GhcRn)   (LHsWcType GhcRn)
-type LHsExprArgOut = HsArg (LHsExpr GhcTcId) (LHsWcType GhcRn)
+type LHsExprArgIn  = HsArg GhcRn
+type LHsExprArgOut = HsArg GhcTcId
 
 tcApp1 :: HsExpr GhcRn  -- either HsApp or HsAppType
        -> ExpRhoType -> TcM (HsExpr GhcTcId)
@@ -1140,8 +1147,9 @@ tcApp1 e res_ty
   = do { (wrap, fun, args) <- tcApp Nothing (noLoc e) [] res_ty
        ; return (mkHsWrap wrap $ unLoc $ foldl mk_hs_app fun args) }
   where
-    mk_hs_app f (HsValArg a)  = mkHsApp f a
-    mk_hs_app f (HsTypeArg a) = mkHsAppTypeOut f a
+    mk_hs_app f (HsValArg a)        = mkHsApp f a
+    mk_hs_app f (HsTypeArg a)       = mkHsAppTypeOut f a
+    mk_hs_app f (HsDictArg a mb_ty) = mkHsAppDict f a mb_ty
 
 tcApp :: Maybe SDoc  -- like "The function `f' is applied to"
                      -- or leave out to get exactly that message
@@ -1158,8 +1166,9 @@ tcApp m_herald orig_fun orig_args res_ty
     go :: LHsExpr GhcRn -> [LHsExprArgIn]
        -> TcM (HsWrapper, LHsExpr GhcTcId, [LHsExprArgOut])
     go (L _ (HsPar e))       args = go e  args
-    go (L _ (HsApp e1 e2))   args = go e1 (HsValArg e2:args)
-    go (L _ (HsAppType e t)) args = go e  (HsTypeArg t:args)
+    go (L _ (HsApp e1 e2))   args            = go e1 (HsValArg e2:args)
+    go (L _ (HsAppType e t)) args            = go e (HsTypeArg t:args)
+    go (L _ (HsAppDict e e_dict mb_ty)) args = go e (HsDictArg e_dict mb_ty:args)
 
     go (L loc (HsVar (L _ fun))) args
       | fun `hasKey` tagToEnumKey
@@ -1206,8 +1215,9 @@ tcApp m_herald orig_fun orig_args res_ty
 
            ; return (wrap_res, mkLHsWrap wrap_fun fun1, args1) }
 
-    mk_hs_app f (HsValArg a)  = mkHsApp f a
-    mk_hs_app f (HsTypeArg a) = mkHsAppType f a
+    mk_hs_app f (HsValArg a)        = mkHsApp f a
+    mk_hs_app f (HsTypeArg a)       = mkHsAppType f a
+    mk_hs_app f (HsDictArg a mb_ty) = mkHsAppDict f a mb_ty
 
 mk_app_msg :: LHsExpr GhcRn -> [LHsExprArgIn] -> SDoc
 mk_app_msg fun args = sep [ text "The" <+> text what <+> quotes (ppr expr)
@@ -1333,6 +1343,88 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
         doc = text "When checking the" <+> speakNth n <+>
               text "argument to" <+> quotes (ppr fun)
 
+    go acc_args n fun_ty (HsDictArg dict mb_ty:args)
+      = do { (dict', dict_ty) <- tcInferRhoNC dict
+           ; traceTc "fun_ty" (ppr fun_ty)
+           ; traceTc "acc_args" (ppr acc_args)
+           ; traceTc "dict" (ppr dict)
+           ; traceTc "mb_ty" (ppr mb_ty)
+           ; traceTc "dict_ty" (ppr dict_ty)
+
+           -- Check that the type is known of the function to which the
+           -- dictionary is passed.
+           ; when (isMetaTyVarTy fun_ty) $ -- TODOT proper way to check this?
+             -- TODOT better error message
+             failWithTc (text "The type of the function must be known")
+
+           -- Check that the type-class constraint annotation is correct
+           ; ann_ty <- tcDictAnnotation (fromJust mb_ty) dict_ty
+                       -- TODOT handle Nothing
+
+           ; let (tvs, theta, tau) = tcSplitSigmaTy fun_ty
+                 in_scope          = mkInScopeSet (tyCoVarsOfType fun_ty)
+                 empty_subst       = mkEmptyTCvSubst in_scope
+
+           ; (theta_before, matched, theta_after)
+               <- extractMatchingConstraint ann_ty theta fun_ty
+
+           ; tcCheckDictAppCoherence matched tau
+
+           -- Instantiate the type variables in the type
+           ; (subst, tvs') <- mapAccumLM newMetaTyVarX empty_subst tvs
+           ; let tau'          = substTy subst tau
+                 theta_before' = substTheta subst theta_before
+                 theta_after'  = substTheta subst theta_after
+                 matched'      = substTy subst matched
+
+                 theta_wo'         = theta_before' ++ theta_after'
+                 matched_in_front' = matched' : theta_before' ++ theta_after'
+                 theta'            = theta_before' ++ [matched'] ++ theta_after'
+
+                 res_ty = mkPhiTy theta_wo' tau'
+
+           -- Unify the constraint C (after replacing C with C.Dict) with the
+           -- dictionary so that the arguments are unified.
+           ; _ <- unifyType Nothing (replaceClassWithDict matched') dict_ty
+           -- Zonk dict_ty so that the result of the unification above can be
+           -- observed.
+           ; dict_ty <- zonkTcType dict_ty
+           ; let (dict_tc, dict_args) = splitTyConApp dict_ty
+
+           -- The constraint corresponding to the passed dictionary might not
+           -- be the first one in the context. So use a subtype check to
+           -- create a wrapper that rearranges the constraints for us such
+           -- that the constraint of the passed dictionary comes first.
+           ; let ctxt = SigmaCtxt -- TODOT
+                 original_order_ty   = mkPhiTy theta' tau'
+                 matched_in_front_ty = mkPhiTy matched_in_front' tau'
+           ; reorder_cts_wrapper
+               <- addErrCtxt (text "TESTJE2") $ -- TODOT
+                  tcSubType_NC ctxt original_order_ty matched_in_front_ty
+
+           -- Make a new evidence binding for the dictionary
+           ; let class_ty = replaceDictWithClass dict_ty
+                 coercion = mkTcUnbranchedAxInstCo (dictTyConCo dict_tc)
+                                                   dict_args []
+                 ev_term = EvCast (EvDictionary (unLoc dict')) coercion
+           ; ev_id        <- newEvVar class_ty
+           ; ev_binds_var <- newTcEvBinds
+           ; addTcEvBind ev_binds_var $ mkWantedEvBind ev_id ev_term
+           ; let ev_binds = TcEvBinds ev_binds_var
+                 wrap1 = mkWpLet ev_binds <.>
+                         mkWpEvApps [EvId ev_id] <.>
+                         reorder_cts_wrapper <.>
+                         mkWpTyApps (mkTyVarTys tvs')
+
+           ; (wrap2, args', inner_res_ty)
+               <- go acc_args (n+1) res_ty args
+
+           ; traceTc "THETA'" (ppr theta')
+           ; traceTc "RES_TY" (ppr res_ty)
+           ; traceTc "INNER_RES_TY" (ppr inner_res_ty)
+
+           ; return ( wrap2 <.> wrap1, args', inner_res_ty ) }
+
     ty_app_err ty arg
       = do { (_, ty) <- zonkTidyTcType emptyTidyEnv ty
            ; failWith $
@@ -1367,6 +1459,71 @@ and we had the visible type application
   so that the result of substitution is well-kinded
   Failing to do so led to Trac #14158.
 -}
+
+
+-- Search for a type class in the context that matches the annotated
+-- type-class constraint syntactically, e.g. `Eq a` matches `Eq a`, but `Eq b`
+-- doesn't match `Eq a`.
+--
+-- Fails when the constraint is present 0, 2, or more times.
+extractMatchingConstraint :: TcPredType -> TcThetaType
+                          -> TcSigmaType
+                          -> TcM (TcThetaType, TcPredType, TcThetaType)
+                             -- ^ (The constraints before,
+                             --    the matched constraint,
+                             --    the constraints after)
+extractMatchingConstraint pred_ty theta fun_ty
+  | (before, matched:after) <- break (syntacticEqPredType pred_ty1) theta
+  = if any (syntacticEqPredType pred_ty1) after
+    -- TODOT better error message
+    then failWithTc (text "More than one constraint matches" <+>
+                     quotes (ppr pred_ty1) <+> text "in:" <+>
+                     quotes (ppr fun_ty))
+    else return (before, matched, after)
+  | otherwise -- TODOT better error message
+  = failWithTc (text "Constraint" <+> quotes (ppr pred_ty1) <+>
+                text "not found in:" <+> quotes (ppr fun_ty))
+  where
+    (_, pred_ty1) = tcSplitForAllTys pred_ty
+
+
+-- Check that the given dictionary is a subtype of the dictionary
+-- corresponding to the type-class constraint annotation. For example, in
+-- `dict as Eq a`, `dict` may be `Eq Int`, `Eq a`, `Eq b`, ...
+-- TODOT disallow wildcards -> easier to do once the parser is extended
+tcDictAnnotation :: LHsSigType GhcRn -> Type -> TcM Type
+tcDictAnnotation ann_ty dict_ty
+  = do { let ctxt = SigmaCtxt -- TODOT
+       ; ann_ty' <- tcClassAnnType ann_ty
+       ; traceTc "ann_ty'" (ppr ann_ty')
+       ; ann_dict_ty <- case replaceClassWithDict_maybe ann_ty' of
+           Just ann_dict_ty -> return ann_dict_ty
+           -- TODOT Invalid constraints like (a ~ b) and `(Show a, Eq a)` are
+           -- not detected by this
+           Nothing -> failWithTc (text "Not a constraint:" <+>
+                                  ppr ann_ty')
+       ; traceTc "ann_dict_ty" (ppr ann_dict_ty)
+       ; (_wrap, wanted) <- addErrCtxt (text "TESTJE") $ -- TODOT
+                            captureConstraints $
+                            tcSubType_NC ctxt ann_dict_ty dict_ty
+       ; _ <- simplifyTop wanted -- TODOT
+       ; failIfErrsM -- TODOT proper error message saying x is not an
+                     -- instantiation of y
+       ; return ann_ty' }
+
+-- Check that of the type class arguments at least one is a type variable with
+-- a role <= representational in tau
+tcCheckDictAppCoherence :: TcPredType -> TcTauType -> TcM ()
+tcCheckDictAppCoherence matched tau
+  = do { let (_, tc_args) = splitTyConApp matched
+             tc_tvs       = mapMaybe getTyVar_maybe tc_args
+             tc_tv_roles  = getTyVarRolesIn tc_tvs tau
+       ; traceTc "TC_TV_ROLES" (ppr (zip tc_tvs tc_tv_roles))
+       ; unless (any (Nominal `ltRole`) tc_tv_roles) $
+         -- TODOT better error message stating the role
+         failWithTc (text "Explicit dictionary application not allowed") }
+
+
 
 ----------------
 tcArg :: LHsExpr GhcRn                   -- The function (for error messages)
@@ -1951,6 +2108,7 @@ too_many_args fun args
   where
     pp (HsValArg e)                             = ppr e
     pp (HsTypeArg (HsWC { hswc_body = L _ t })) = pprHsType t
+    pp (HsDictArg e _mb_ty)                     = ppr e -- TODOT mb_ty
 
 
 {-

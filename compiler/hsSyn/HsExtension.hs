@@ -28,7 +28,7 @@ import Type       ( Type )
 import Outputable
 import SrcLoc (Located)
 import Coercion
-import TcEvidence
+import {-# SOURCE #-} TcEvidence ( HsWrapper )
 
 {-
 Note [Trees that grow]

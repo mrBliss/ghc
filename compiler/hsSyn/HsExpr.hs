@@ -122,14 +122,14 @@ noSyntaxExpr :: SourceTextX p => SyntaxExpr p
 noSyntaxExpr = SyntaxExpr { syn_expr      = HsLit (HsString noSourceText
                                                         (fsLit "noSyntaxExpr"))
                           , syn_arg_wraps = []
-                          , syn_res_wrap  = WpHole }
+                          , syn_res_wrap  = idHsWrapper }
 
 -- | Make a 'SyntaxExpr Name' (the "rn" is because this is used in the
 -- renamer), missing its HsWrappers.
 mkRnSyntaxExpr :: Name -> SyntaxExpr GhcRn
 mkRnSyntaxExpr name = SyntaxExpr { syn_expr      = HsVar $ noLoc name
                                  , syn_arg_wraps = []
-                                 , syn_res_wrap  = WpHole }
+                                 , syn_res_wrap  = idHsWrapper }
   -- don't care about filling in syn_arg_wraps because we're clearly
   -- not past the typechecker
 
@@ -334,6 +334,11 @@ data HsExpr p
   -- TODO:AZ: Sort out Name
   | HsAppTypeOut (LHsExpr p) (LHsWcType GhcRn) -- just for pretty-printing
 
+  | HsAppDict    (LHsExpr p)
+                 (LHsExpr p)             -- ^ Dictionary to apply
+                 (Maybe (LHsSigType p))  -- ^ Optional type-class constraint
+                                         -- annotation of the dictionary.
+    -- TODOT Annotation crap
 
   -- | Operator applications:
   -- NB Bracketed ops such as (+) come out as Vars.
@@ -851,6 +856,7 @@ ppr_expr (HsCoreAnn stc (StringLiteral sta s) e)
 ppr_expr e@(HsApp {})        = ppr_apps e []
 ppr_expr e@(HsAppType {})    = ppr_apps e []
 ppr_expr e@(HsAppTypeOut {}) = ppr_apps e []
+ppr_expr e@(HsAppDict {})    = ppr_apps e []
 
 ppr_expr (OpApp e1 op _ e2)
   | Just pp_op <- should_print_infix (unLoc op)
@@ -1067,6 +1073,8 @@ ppr_apps (HsAppType (L _ fun) arg)    args
   = ppr_apps fun (Right (LHsWcTypeX arg) : args)
 ppr_apps (HsAppTypeOut (L _ fun) arg) args
   = ppr_apps fun (Right (LHsWcTypeX arg) : args)
+ppr_apps (HsAppDict (L _ fun) dict _mb_ty) args -- TODOT
+  = ppr_apps fun (Left dict : args)
 ppr_apps fun args = hang (ppr_expr fun) 2 (sep (map pp args))
   where
     pp (Left arg)                             = ppr arg

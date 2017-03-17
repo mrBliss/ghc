@@ -1,0 +1,5 @@
+
+RoleNom.hs:14:15: error:
+    • Explicit dictionary application not allowed
+    • In the expression: method inst
+      In an equation for ‘explicitApp’: explicitApp = method inst

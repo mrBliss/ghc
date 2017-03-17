@@ -27,6 +27,7 @@ module HsUtils(
   mkHsDictLet, mkHsLams,
   mkHsOpApp, mkHsDo, mkHsComp, mkHsWrapPat, mkHsWrapPatCo,
   mkLHsPar, mkHsCmdWrap, mkLHsCmdWrap,
+  mkHsAppDict,
 
   nlHsTyApp, nlHsTyApps, nlHsVar, nlHsDataCon,
   nlHsLit, nlHsApp, nlHsApps, nlHsSyntaxApps,
@@ -186,6 +187,9 @@ mkHsAppTypes = foldl mkHsAppType
 
 mkHsAppTypeOut :: LHsExpr GhcTc -> LHsWcType GhcRn -> LHsExpr GhcTc
 mkHsAppTypeOut e t = addCLoc e (hswc_body t) (HsAppTypeOut e t)
+
+mkHsAppDict :: LHsExpr name -> LHsExpr name -> Maybe (LHsSigType name) -> LHsExpr name
+mkHsAppDict e e_dict mb_ty = addCLoc e e_dict (HsAppDict e e_dict mb_ty)
 
 mkHsLam :: [LPat GhcPs] -> LHsExpr GhcPs -> LHsExpr GhcPs
 mkHsLam pats body = mkHsPar (L (getLoc body) (HsLam matches))

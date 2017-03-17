@@ -21,7 +21,7 @@ module DsBinds ( dsTopLHsBinds, dsLHsBinds, decomposeRuleLhs, dsSpec,
 
 import GhcPrelude
 
-import {-# SOURCE #-}   DsExpr( dsLExpr )
+import {-# SOURCE #-}   DsExpr( dsLExpr, dsExpr )
 import {-# SOURCE #-}   Match( matchWrapper )
 
 import DsMonad
@@ -1184,6 +1184,7 @@ dsEvTerm (EvSelector sel_id tys tms)
        ; return $ Var sel_id `mkTyApps` tys `mkApps` tms' }
 
 dsEvTerm (EvDelayedError ty msg) = return $ dsEvDelayedError ty msg
+dsEvTerm (EvDictionary expr) = dsExpr expr
 
 dsEvDelayedError :: Type -> FastString -> CoreExpr
 dsEvDelayedError ty msg
