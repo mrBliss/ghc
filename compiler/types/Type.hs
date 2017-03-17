@@ -146,7 +146,7 @@ module Type (
         -- * Type comparison
         eqType, eqTypeX, eqTypes, nonDetCmpType, nonDetCmpTypes, nonDetCmpTypeX,
         nonDetCmpTypesX, nonDetCmpTc,
-        eqVarBndrs,
+        eqVarBndrs, syntacticEqPredType,
 
         -- * Forcing evaluation of types
         seqType, seqTypes,
@@ -241,7 +241,7 @@ import Digraph
 import Unique ( nonDetCmpUnique )
 import SrcLoc  ( SrcSpan )
 import OccName ( OccName )
-import Name    ( mkInternalName )
+import Name    ( mkInternalName, getOccString )
 
 import Maybes           ( orElse )
 import Data.Maybe       ( isJust, mapMaybe )
@@ -2297,6 +2297,20 @@ nonDetCmpTc tc1 tc2
   where
     u1  = tyConUnique tc1
     u2  = tyConUnique tc2
+
+-- | Check whether two 'PredType's are syntactically equal.
+-- Used for explicit dictionary application.
+syntacticEqPredType :: PredType -> PredType -> Bool
+syntacticEqPredType = go
+  where
+    go (TyVarTy tv1) (TyVarTy tv2) = getOccString tv1 == getOccString tv2
+    go (AppTy ty11 ty12) (AppTy ty21 ty22) = go ty11 ty21 && go ty12 ty22
+    go (TyConApp tc1 tys1) (TyConApp tc2 tys2) = tc1 == tc2 && eqListBy go tys1 tys2
+    go (LitTy lit1) (LitTy lit2) = lit1 == lit2
+    -- TODOT do we need these vvv?
+    go (ForAllTy _ ty1) ty2 = go ty1 ty2
+    go ty1 (ForAllTy _ ty2) = go ty1 ty2
+    go _ _ = False
 
 {-
 ************************************************************************

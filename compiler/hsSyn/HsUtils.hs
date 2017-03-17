@@ -20,7 +20,7 @@ which deal with the instantiated versions are located elsewhere:
 
 module HsUtils(
   -- Terms
-  mkHsPar, mkHsApp, mkHsAppType, mkHsAppTypeOut, mkHsCaseAlt,
+  mkHsPar, mkHsApp, mkHsAppType, mkHsAppTypeOut, mkHsAppDict, mkHsCaseAlt,
   mkSimpleMatch, unguardedGRHSs, unguardedRHS,
   mkMatchGroup, mkMatch, mkPrefixFunRhs, mkHsLam, mkHsIf,
   mkHsWrap, mkLHsWrap, mkHsWrapCo, mkHsWrapCoR, mkLHsWrapCo,
@@ -178,6 +178,9 @@ mkHsAppType e t = addCLoc e (hswc_body t) (HsAppType e t)
 
 mkHsAppTypeOut :: LHsExpr Id -> LHsWcType Name -> LHsExpr Id
 mkHsAppTypeOut e t = addCLoc e (hswc_body t) (HsAppTypeOut e t)
+
+mkHsAppDict :: LHsExpr name -> LHsExpr name -> Maybe (LHsSigType name) -> LHsExpr name
+mkHsAppDict e e_dict mb_ty = addCLoc e e_dict (HsAppDict e e_dict mb_ty)
 
 mkHsLam :: [LPat RdrName] -> LHsExpr RdrName -> LHsExpr RdrName
 mkHsLam pats body = mkHsPar (L (getLoc body) (HsLam matches))

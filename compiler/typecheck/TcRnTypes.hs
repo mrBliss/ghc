@@ -3271,6 +3271,7 @@ exprCtOrigin (HsLamCase ms)     = matchesCtOrigin ms
 exprCtOrigin (HsApp e1 _)       = lexprCtOrigin e1
 exprCtOrigin (HsAppType e1 _)   = lexprCtOrigin e1
 exprCtOrigin (HsAppTypeOut {})  = panic "exprCtOrigin HsAppTypeOut"
+exprCtOrigin (HsAppDict {})     = AppOrigin -- TODOT?
 exprCtOrigin (OpApp _ op _ _)   = lexprCtOrigin op
 exprCtOrigin (NegApp e _)       = lexprCtOrigin e
 exprCtOrigin (HsPar e)          = lexprCtOrigin e

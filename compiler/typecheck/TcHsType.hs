@@ -9,7 +9,7 @@
 
 module TcHsType (
         -- Type signatures
-        kcHsSigType, tcClassSigType,
+        kcHsSigType, tcClassSigType, tcClassAnnType,
         tcHsSigType, tcHsSigWcType,
         tcHsPartialSigType,
         funsSigCtxt, addSigCtxt, pprSigCtxt,
@@ -236,6 +236,13 @@ tc_hs_sig_type (HsIB { hsib_vars = sig_vars
   = do { (tkvs, ty) <- tcImplicitTKBndrsType sig_vars $
                        tc_lhs_type typeLevelMode hs_ty kind
        ; return (mkSpecForAllTys tkvs ty) }
+
+tcClassAnnType :: LHsSigType Name -> TcM Type
+tcClassAnnType sig_ty
+  = addSigCtxt GhciCtxt {- TODOT -} (hsSigType sig_ty) $
+    do { ty <- tc_hs_sig_type sig_ty constraintKind
+       ; kindGeneralizeType ty }
+
 
 -----------------
 tcHsDeriv :: LHsSigType Name -> TcM ([TyVar], Class, [Type], [Kind])

@@ -654,6 +654,11 @@ zonkExpr env (HsAppTypeOut e t)
        return (HsAppTypeOut new_e t)
        -- NB: the type is an HsType; can't zonk that!
 
+zonkExpr env (HsAppDict e e_dict mb_ty)
+  = do new_e      <- zonkLExpr env e
+       new_e_dict <- zonkLExpr env e_dict
+       return (HsAppDict new_e new_e_dict mb_ty)
+
 zonkExpr _ e@(HsRnBracketOut _ _)
   = pprPanic "zonkExpr: HsRnBracketOut" (ppr e)
 
@@ -1449,6 +1454,10 @@ zonkEvTerm env (EvSelector sel_id tys tms)
        ; tys'    <- zonkTcTypeToTypes env tys
        ; tms' <- mapM (zonkEvTerm env) tms
        ; return (EvSelector sel_id' tys' tms') }
+zonkEvTerm env (EvDictionary e)
+  = do { e' <- zonkExpr env e
+       ; return (EvDictionary e') }
+
 
 zonkEvTypeable :: ZonkEnv -> EvTypeable -> TcM EvTypeable
 zonkEvTypeable env (EvTypeableTyCon tycon e)

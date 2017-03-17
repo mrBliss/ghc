@@ -47,6 +47,7 @@ import TcType
 import Type
 import TyCon
 import Class( Class )
+import {-# SOURCE #-} HsExpr( HsExpr )
 import PrelNames
 import DynFlags   ( gopt, GeneralFlag(Opt_PrintTypecheckerElaboration) )
 import VarEnv
@@ -489,6 +490,7 @@ data EvTerm
                                   -- dictionaries; see Note [HasField instances]
                                   -- in TcInterface
 
+  | EvDictionary (HsExpr Id)      -- TODOT Explicitly passed dictionary
   deriving Data.Data
 
 
@@ -797,6 +799,7 @@ evVarsOfTerm (EvLit _)            = emptyVarSet
 evVarsOfTerm (EvCallStack cs)     = evVarsOfCallStack cs
 evVarsOfTerm (EvTypeable _ ev)    = evVarsOfTypeable ev
 evVarsOfTerm (EvSelector _ _ evs) = mapUnionVarSet evVarsOfTerm evs
+evVarsOfTerm (EvDictionary _)     = emptyVarSet  -- TODOT
 
 evVarsOfTerms :: [EvTerm] -> VarSet
 evVarsOfTerms = mapUnionVarSet evVarsOfTerm
@@ -904,6 +907,7 @@ instance Outputable EvTerm where
                                 <+> sep [ char '@' <> ppr ty, ppr msg ]
   ppr (EvTypeable ty ev)      = ppr ev <+> dcolon <+> text "Typeable" <+> ppr ty
   ppr (EvSelector sel tys ts) = ppr sel <+> sep [ char '@' <> ppr tys, ppr ts]
+  ppr (EvDictionary e)        = ppr e
 
 instance Outputable EvLit where
   ppr (EvNum n) = integer n
