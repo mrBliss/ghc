@@ -1,3 +1,5 @@
+test('ImportDictMissing', extra_files(['ExportClassOnly.hs']), multimod_compile, ['ImportDictMissing', '-v0'])
+test('ImportMissingDictField', extra_files(['ExportDictOnly.hs']), multimod_compile, ['ImportMissingDictField', '-v0'])
 test('Incoherence1', normal, compile_fail, [''])
 test('Incoherence2', normal, compile_fail, [''])
 test('Incoherence3', normal, compile_fail, [''])
