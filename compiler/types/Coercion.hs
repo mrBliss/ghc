@@ -60,7 +60,7 @@ module Coercion (
         pickLR,
 
         isReflCo, isReflCo_maybe, isReflexiveCo, isReflexiveCo_maybe,
-        isReflCoVar_maybe,
+        isReflCoVar_maybe, isDictCo_maybe,
 
         -- ** Coercion variables
         mkCoVar, isCoVar, coVarName, setCoVarName, setCoVarUnique,
@@ -479,6 +479,13 @@ isReflexiveCo_maybe co
   | otherwise
   = Nothing
   where (Pair ty1 ty2, r) = coercionKindRole co
+
+-- | If the coercion is between a C.Dict and C, return the tycon of C.Dict
+isDictCo_maybe :: Coercion -> Maybe TyCon
+isDictCo_maybe (AxiomInstCo (CoAxiom { co_ax_tc = tc }) _ _)
+  | isDictTyCon tc = Just tc
+isDictCo_maybe _ = Nothing
+
 
 {-
 %************************************************************************
