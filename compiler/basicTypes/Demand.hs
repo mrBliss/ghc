@@ -75,7 +75,7 @@ import Binary
 import Maybes           ( orElse )
 
 import Type            ( Type, isUnliftedType )
-import TyCon           ( isNewTyCon, isClassTyCon )
+import TyCon           ( isNewTyCon, isClassTyCon, isDictTyCon )
 import DataCon         ( splitDataProductType_maybe )
 
 {-
@@ -1999,7 +1999,7 @@ strictifyDictDmd ty dmd = case getUseDmd dmd of
   Use n _ |
     Just (tycon, _arg_tys, _data_con, inst_con_arg_tys)
       <- splitDataProductType_maybe ty,
-    not (isNewTyCon tycon), isClassTyCon tycon -- is a non-newtype dictionary
+    not (isNewTyCon tycon), (isClassTyCon tycon || isDictTyCon tycon) -- is a non-newtype dictionary
     -> seqDmd `bothDmd` -- main idea: ensure it's strict
        case splitProdDmd_maybe dmd of
          -- superclass cycles should not be a problem, since the demand we are

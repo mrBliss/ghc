@@ -1702,6 +1702,7 @@ isDictLikeTy :: Type -> Bool
 isDictLikeTy ty | Just ty' <- coreView ty = isDictLikeTy ty'
 isDictLikeTy ty = case splitTyConApp_maybe ty of
         Just (tc, tys) | isClassTyCon tc -> True
+                       | isDictTyCon  tc -> True
                        | isTupleTyCon tc -> all isDictLikeTy tys
         _other                           -> False
 
