@@ -35,10 +35,11 @@ import VarSet
 import VarEnv
 import DataCon
 import OptCoercion ( optCoercion )
+import Class       ( classTyCon )
 import Type     hiding ( substTy, extendTvSubst, extendCvSubst, extendTvSubstList
                        , isInScope, substTyVarBndr, cloneTyVarBndr )
 import Coercion hiding ( substCo, substCoVarBndr )
-import TyCon        ( tyConArity )
+import TyCon        ( tyConArity, dictTyConClass_maybe, tyConSingleDataCon_maybe )
 import TysWiredIn
 import PrelNames
 import BasicTypes
@@ -1074,6 +1075,15 @@ pushCoDataCon dc dc_args co
   | isReflCo co || from_ty `eqType` to_ty  -- try cheap test first
   , let (univ_ty_args, rest_args) = splitAtList (dataConUnivTyVars dc) dc_args
   = Just (dc, map exprToType univ_ty_args, rest_args)
+
+  -- Replace a <Class>.Dict datacon by the corresponding C:<Class> datacon so
+  -- that it gets optimised like regular dictionaries.
+  -- TODOT best place and way to do this?
+  | Just dict_tc <- isDictCo_maybe co
+  , Just clas <- dictTyConClass_maybe dict_tc
+  , Just class_dc <- tyConSingleDataCon_maybe (classTyCon clas)
+  , let (univ_ty_args, rest_args) = splitAtList (dataConUnivTyVars dc) dc_args
+  = Just (class_dc, map exprToType univ_ty_args, rest_args)
 
   | Just (to_tc, to_tc_arg_tys) <- splitTyConApp_maybe to_ty
   , to_tc == dataConTyCon dc
