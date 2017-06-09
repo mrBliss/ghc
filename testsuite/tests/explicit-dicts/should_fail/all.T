@@ -1,2 +1,8 @@
+test('Incoherence1', normal, compile_fail, [''])
+test('Incoherence2', normal, compile_fail, [''])
+test('Incoherence3', normal, compile_fail, [''])
+test('Incoherence4', normal, compile_fail, [''])
+test('Incoherence5', normal, compile_fail, [''])
 test('NoTyVar', normal, compile_fail, [''])
+test('OverrideSomeMethodFunction', extra_files(['SomeClass.hs', 'SomeMethodFunction.hs', 'SomeClassInstance.hs']), multimod_compile_fail, ['OverrideSomeMethodFunction', '-v0'])
 test('RoleNom', normal, compile_fail, [''])

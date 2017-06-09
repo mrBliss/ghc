@@ -1,0 +1,16 @@
+
+SomeMethodFunction.hs:9:6: warning: [-Wsimplifiable-class-constraints (in -Wdefault)]
+    • The constraint ‘SomeClass a’ matches an instance declaration
+      instance [safe] SomeClass a -- Defined at SomeClassInstance.hs:7:10
+      This makes type inference for inner bindings fragile;
+        either use MonoLocalBinds, or simplify it using the instance
+    • In the type signature: f :: SomeClass a => a -> a
+
+OverrideSomeMethodFunction.hs:13:8: error:
+    • Explicit dictionary application not allowed: incoherence detected
+    • In the expression: f notDict True
+      In an equation for ‘test’:
+          test
+            = f notDict True
+            where
+                notDict = SomeClass.Dict not

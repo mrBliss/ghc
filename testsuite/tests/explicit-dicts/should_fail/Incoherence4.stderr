@@ -1,0 +1,5 @@
+
+Incoherence4.hs:13:12: error:
+    • Explicit dictionary application not allowed: incoherence detected
+    • In the expression: foo dict
+      In an equation for ‘bar’: bar dict = foo dict
