@@ -1,0 +1,9 @@
+
+Incoherence5.hs:18:8: error:
+    • Explicit dictionary application not allowed: incoherence detected
+    • In the expression: f notDict True
+      In an equation for ‘test’:
+          test
+            = f notDict True
+            where
+                notDict = SomeClass.Dict not

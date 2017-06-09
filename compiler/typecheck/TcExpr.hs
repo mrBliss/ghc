@@ -29,7 +29,9 @@ import BasicTypes
 import Inst
 import TcBinds          ( chooseInferredQuantifiers, tcLocalBinds )
 import TcSigs           ( tcUserTypeSig, tcInstSig )
-import TcSimplify       ( simplifyInfer, simplifyTop, InferMode(..) )
+import TcSimplify       ( simplifyInfer, simplifyTop, solveWanteds
+                        , InferMode(..) )
+import TcSMonad         ( runTcS )
 import FamInst          ( tcGetFamInstEnvs, tcLookupDataFamInst )
 import FamInstEnv       ( FamInstEnvs )
 import RnEnv            ( addUsedGRE, addNameClashErrRn
@@ -1310,7 +1312,8 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            ; (theta_before, matched, theta_after)
                <- extractMatchingConstraint ann_ty theta fun_ty
 
-           ; tcCheckDictAppCoherence matched tau
+           ; tcCheckDictAppRoleCriterion matched tau
+           ; tcCheckDictAppCoherence tvs (theta_before ++ theta_after) matched
 
            -- Instantiate the type variables in the type
            ; (subst, tvs') <- mapAccumLM newMetaTyVarX empty_subst tvs
@@ -1453,10 +1456,14 @@ tcDictAnnotation ann_ty dict_ty
                      -- instantiation of y
        ; return ann_ty' }
 
--- Check that of the type class arguments at least one is a type variable with
+-- Check whether the Role Criterion holds for an explicit dictionary
+-- application. This criterion determines when it is "safe" to violate the
+-- Global Uniqueness of Instances property.
+--
+-- It is safe when at least one type variable of the type class arguments has
 -- a role <= representational in tau
-tcCheckDictAppCoherence :: TcPredType -> TcTauType -> TcM ()
-tcCheckDictAppCoherence matched tau
+tcCheckDictAppRoleCriterion :: TcPredType -> TcTauType -> TcM ()
+tcCheckDictAppRoleCriterion matched tau
   = do { let (_, tc_args) = splitTyConApp matched
              tc_tvs       = mapMaybe getTyVar_maybe tc_args
              tc_tv_roles  = getTyVarRolesIn tc_tvs tau
@@ -1465,6 +1472,87 @@ tcCheckDictAppCoherence matched tau
          -- TODOT better error message stating the role
          failWithTc (text "Explicit dictionary application not allowed") }
 
+-- Check for whether an explicit dictionary application is incoherent. Signal
+-- an error if it is the case.
+--
+-- An explicit dictionary application is incoherent when it is not clear which
+-- dictionary will be used at run-time. This is the case whenever a dictionary
+-- is explicitly passed for a type-class constraint `C_pass` which occurs
+-- multiple times in the context of the expression to which the dictionary is
+-- passed. Without the ability to pass an explicit dictionary, this doesn't
+-- matter at all and we maintain coherence, because for a certain type-class
+-- constraint, the exact same dictionary would always be picked (ignoring
+-- orphans). But now a dictionary differing from the default one can be
+-- explicitly passed, it will affect the dynamic semantics of the program. So
+-- we must detect and prevent such cases of incoherence.
+--
+-- The problem is easy to spot when the same constraint `C_pass` literally
+-- occurs twice in the context, e.g., `(Eq a, Eq a)`. If a dictionary is
+-- explicitly passed to one of the two `Eq a` constraints, which will be used?
+-- The explicitly passed dictionary, or the one passed implicitly for the
+-- remaining `Eq a` constraint? (Such cases are actually already detected in
+-- `extractMatchingConstraint`.)
+--
+-- However, it can also be more implicit, e.g., `(Eq a, Ord a)` where `Eq a`
+-- is a super class of `Ord a`. Will the dictionary of the `Eq a` constraint
+-- or the super class dictionary of the `Ord a` constraint be used?
+--
+-- An even more subtle case is when a top-level instance overlaps with the
+-- constraint in the context, e.g.
+--
+--   class SomeClass a where someMethod :: a -> a
+--
+--   instance SomeClass a where someMethod = id
+--
+--   f :: SomeClass a => a -> a
+--   f = someMethod
+--
+-- Which dictionary will be used for the call to `someMethod` in `f`? The
+-- dictionary passed for the constraint or the dictionary defined by the
+-- top-level catch-all instance? We accept the definition of `f`, but we will
+-- signal an error whenever a dictionary is passed explicitly to `f`.
+--
+-- We use the following rule to detect such cases of potential incoherence:
+--
+-- Given a context `(C_pass, Q_rest)` where `Q_rest` are zero or more
+-- remaining constraints, passing a dictionary for type-class constraint
+-- `C_pass` is incoherent if:
+--
+-- There exists a constraint `C` in the transitive closure of the super-class
+-- relation of `C_pass` (including `C_pass` itself) for which the following
+-- entailment holds: `Q ; Q_rest ⊫ C` where `Q` are the top-level instances.
+--
+-- Some examples of incoherence (with `Q = {SomeClass a}`):
+--
+-- | C_pass      | Q_rest        | Entails                                         |
+-- |-------------+---------------+-------------------------------------------------|
+-- | Eq a        | Ord a         | Q ; Ord ⊫ Eq a                                  |
+-- | Ord a       | Eq a          | Q ; Eq a ⊫ Eq a (Eq a is a superclass of Ord a) |
+-- | Eq a        | (a ~ b, Eq b) | Q ; (a ~ b, Eq b) ⊫ Eq a                        |
+-- | SomeClass a | ()            | Q ; () ⊫ SomeClass a                            |
+--
+tcCheckDictAppCoherence :: [TcTyVar]    -- Skolems of the context
+                        -> TcThetaType  -- Remainder  `Q_rest`
+                        -> TcPredType   -- Constraint `C_pass`
+                        -> TcM ()
+tcCheckDictAppCoherence skol_tvs remainder ct
+  = do { let super_classes = transSuperClasses ct
+       ; entailment_checks <- mapM (isEntailedBy remainder) (ct : super_classes)
+       ; when (or entailment_checks) $
+         -- TODOT better error message
+         failWithTc (text "Explicit dictionary application not allowed:" <+>
+                     text "incoherence detected") }
+  where
+    isEntailedBy given_cts ct
+      = do { givens <- newEvVars given_cts
+           ; tc_lvl <- getTcLevel
+           ; wanted <- newWanted (GivenOrigin UnkSkol) {- TODOT -}
+                                 (Just TypeLevel) ct
+           ; let wc_ct = mkSimpleWC [wanted]
+           ; (implics, _) <- buildImplicationFor tc_lvl UnkSkol {- TODOT -} skol_tvs
+                                                 givens wc_ct
+           ; (wc_after_solving, _) <- runTcS $ solveWanteds (mkImplicWC implics)
+           ; return $ isEmptyWC wc_after_solving }
 
 
 ----------------
