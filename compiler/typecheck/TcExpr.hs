@@ -1445,7 +1445,7 @@ tcDictAnnotation ann_ty dict_ty
            Just ann_dict_ty -> return ann_dict_ty
            -- TODOT Invalid constraints like (a ~ b) and `(Show a, Eq a)` are
            -- not detected by this
-           Nothing -> failWithTc (text "Not a constraint:" <+>
+           Nothing -> failWithTc (text "Not a type-class constraint:" <+>
                                   ppr ann_ty')
        ; traceTc "ann_dict_ty" (ppr ann_dict_ty)
        ; (_wrap, wanted) <- addErrCtxt (text "TESTJE") $ -- TODOT
