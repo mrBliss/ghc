@@ -7,7 +7,9 @@ SomeMethodFunction.hs:9:6: warning: [-Wsimplifiable-class-constraints (in -Wdefa
     • In the type signature: f :: SomeClass a => a -> a
 
 OverrideSomeMethodFunction.hs:13:8: error:
-    • Explicit dictionary application not allowed: incoherence detected
+    • Explicit dictionary application to: ‘SomeClass a’
+      is not allowed because of possible incoherence:
+        There is a global instance for ‘SomeClass a’
     • In the expression: f notDict True
       In an equation for ‘test’:
           test

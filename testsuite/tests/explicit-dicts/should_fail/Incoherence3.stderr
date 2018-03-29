@@ -1,5 +1,7 @@
 
 Incoherence3.hs:10:12: error:
-    • Explicit dictionary application not allowed: incoherence detected
+    • Explicit dictionary application to: ‘Eq a’
+      is not allowed because of possible incoherence:
+        ‘Eq a’ is entailed by the remainder of the context: ‘(a ~ b, Eq b)’
     • In the expression: foo dict
       In an equation for ‘bar’: bar dict = foo dict
