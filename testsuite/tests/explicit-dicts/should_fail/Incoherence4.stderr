@@ -1,5 +1,7 @@
 
 Incoherence4.hs:13:12: error:
-    • Explicit dictionary application not allowed: incoherence detected
+    • Explicit dictionary application to: ‘C a’
+      is not allowed because of possible incoherence:
+        Through an ancestor: ‘A a’ occurs in the context
     • In the expression: foo dict
       In an equation for ‘bar’: bar dict = foo dict

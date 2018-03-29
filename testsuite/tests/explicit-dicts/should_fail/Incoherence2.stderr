@@ -1,5 +1,7 @@
 
 Incoherence2.hs:9:12: error:
-    • Explicit dictionary application not allowed: incoherence detected
+    • Explicit dictionary application to: ‘Ord a’
+      is not allowed because of possible incoherence:
+        Through an ancestor: ‘Eq a’ occurs in the context
     • In the expression: foo dict
       In an equation for ‘bar’: bar dict = foo dict
