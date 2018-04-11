@@ -1288,12 +1288,12 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
         doc = text "When checking the" <+> speakNth n <+>
               text "argument to" <+> quotes (ppr fun)
 
-    go acc_args n fun_ty (HsDictArg dict mb_ty:args)
+    go acc_args n fun_ty (HsDictArg dict mb_ann_ty:args)
       = do { (dict', dict_ty) <- tcInferRhoNC dict
            ; traceTc "fun_ty" (ppr fun_ty)
            ; traceTc "acc_args" (ppr acc_args)
            ; traceTc "dict" (ppr dict)
-           ; traceTc "mb_ty" (ppr mb_ty)
+           ; traceTc "mb_ann_ty" (ppr mb_ann_ty)
            ; traceTc "dict_ty" (ppr dict_ty)
 
            -- Check that the type is known of the function to which the
@@ -1302,16 +1302,18 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
              -- TODOT better error message
              failWithTc (text "The type of the function must be known")
 
+           -- Type check the type annotation if present
+           ; mb_ann_ty' <- mapM tcClassAnnType mb_ann_ty
+
            -- Check that the type-class constraint annotation is correct
-           ; ann_ty <- tcDictAnnotation (fromJust mb_ty) dict_ty
-                       -- TODOT handle Nothing
+           ; whenIsJust mb_ann_ty' $ tcDictAnnotation dict_ty
 
            ; let (tvs, theta, tau) = tcSplitSigmaTy fun_ty
                  in_scope          = mkInScopeSet (tyCoVarsOfType fun_ty)
                  empty_subst       = mkEmptyTCvSubst in_scope
 
            ; (theta_before, matched, theta_after)
-               <- extractMatchingConstraint ann_ty theta fun_ty
+               <- extractMatchingConstraint mb_ann_ty' dict_ty theta fun_ty
 
            ; tcCheckDictAppRoleCriterion matched tau
            ; tcCheckDictAppCoherence tvs (theta_before ++ theta_after) matched
@@ -1335,7 +1337,7 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            -- Zonk dict_ty so that the result of the unification above can be
            -- observed.
            ; dict_ty <- zonkTcType dict_ty
-           ; let (dict_tc, dict_args) = splitTyConApp dict_ty
+           ; let (dict_tycon, dict_args) = splitTyConApp dict_ty
 
            -- The constraint corresponding to the passed dictionary might not
            -- be the first one in the context. So use a subtype check to
@@ -1350,7 +1352,7 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
 
            -- Make a new evidence binding for the dictionary
            ; let class_ty = replaceDictWithClass dict_ty
-                 coercion = mkTcUnbranchedAxInstCo (dictTyConCo dict_tc)
+                 coercion = mkTcUnbranchedAxInstCo (dictTyConCo dict_tycon)
                                                    dict_args []
                  ev_term = EvCast (EvDictionary (unLoc dict')) coercion
            ; ev_id        <- newEvVar class_ty
@@ -1406,56 +1408,87 @@ and we had the visible type application
   Failing to do so led to Trac #14158.
 -}
 
-
 -- Search for a type class in the context that matches the annotated
--- type-class constraint syntactically, e.g. `Eq a` matches `Eq a`, but `Eq b`
--- doesn't match `Eq a`.
+-- type-class constraint.
 --
 -- Fails when the constraint is present 0, 2, or more times.
-extractMatchingConstraint :: TcPredType -> TcThetaType
-                          -> TcSigmaType
-                          -> TcM (TcThetaType, TcPredType, TcThetaType)
-                             -- ^ (The constraints before,
-                             --    the matched constraint,
-                             --    the constraints after)
-extractMatchingConstraint pred_ty theta fun_ty
-  | (before, matched:after) <- break (syntacticEqPredType pred_ty1) theta
-  = if any (syntacticEqPredType pred_ty1) after
-    -- TODOT better error message
-    then failWithTc (text "More than one constraint matches" <+>
-                     quotes (ppr pred_ty1) <+> text "in:" <+>
-                     quotes (ppr fun_ty))
-    else return (before, matched, after)
-  | otherwise -- TODOT better error message
-  = failWithTc (text "Constraint" <+> quotes (ppr pred_ty1) <+>
-                text "not found in:" <+> quotes (ppr fun_ty))
+extractMatchingConstraint
+  :: Maybe PredType  -- ^ The optionally annotated type-class constraint
+  -> PredType        -- ^ The type of the dictionary
+  -> TcThetaType     -- ^ The context
+  -> TcSigmaType     -- ^ The whole function type, used for error messages
+  -> TcM (TcThetaType, TcPredType, TcThetaType)
+     -- ^ (constraints before, matched constraint, constraints after)
+extractMatchingConstraint (Just ann_ty) _ theta fun_ty
+  = extractMatchingConstraintHelper (syntacticEqPredType ann_ty')
+    theta
+    (text "More than one constraint matches" <+>
+     quotes (ppr ann_ty') <+> text "in:" $$ nest 2 (ppr fun_ty))
+    (text "Constraint" <+> quotes (ppr ann_ty') <+>
+     text "not found in:" $$ nest 2 (ppr fun_ty))
   where
-    (_, pred_ty1) = tcSplitForAllTys pred_ty
+    ann_ty' = dropForAlls ann_ty
+extractMatchingConstraint Nothing dict_ty theta fun_ty
+  | Just dict_ty_tycon <- tcTyConAppTyCon_maybe
+                          =<< replaceDictWithClass_maybe dict_ty
+  = extractMatchingConstraintHelper (sameTyCon dict_ty_tycon) theta
+    (text "More than one constraint matches the type of the dictionary in:" $$
+     nest 2 (ppr fun_ty) $$
+     text "Consider adding an annotation")
+    (text "No constraint found matching the type of the dictionary in:" $$
+     nest 2 (ppr fun_ty))
+  where
+    sameTyCon tc ty
+      | Just tc' <- tcTyConAppTyCon_maybe ty = tc == tc'
+      | otherwise = False
+extractMatchingConstraint _ _ _ _ = failWithTc (text "TODOT dict_ty jos")
 
 
--- Check that the given dictionary is a subtype of the dictionary
--- corresponding to the type-class constraint annotation. For example, in
--- `dict as Eq a`, `dict` may be `Eq Int`, `Eq a`, `Eq b`, ...
+extractMatchingConstraintHelper
+  :: (TcPredType -> Bool)
+     -- ^ Function that determines when a constraint in the context matches
+     -- the constraint we are looking for.
+  -> TcThetaType  -- ^ The context
+  -> SDoc         -- ^ Error message to show when multiple constraints match
+  -> SDoc         -- ^ Error message to show when no constraints match
+  -> TcM (TcThetaType, TcPredType, TcThetaType)
+     -- ^ (constraints before, matched constraint, constraints after)
+extractMatchingConstraintHelper matches theta err_msg_multi err_msg_none
+  | (before, matched:after) <- break matches theta
+  = if any matches after
+    -- TODOT better error message
+    then failWithTc err_msg_multi
+    else return (before, matched, after)
+  | otherwise
+  = failWithTc err_msg_none
+
+
+-- Check that the type of the given dictionary is a subtype of the type-class
+-- constraint annotation.
+--
+-- For example, in `dict as Eq a`, `dict` may be `Eq Int`, `Eq a`, `Eq b`, ...
+--
 -- TODOT disallow wildcards -> easier to do once the parser is extended
-tcDictAnnotation :: LHsSigType Name -> Type -> TcM Type
-tcDictAnnotation ann_ty dict_ty
-  = do { let ctxt = SigmaCtxt -- TODOT
-       ; ann_ty' <- tcClassAnnType ann_ty
-       ; traceTc "ann_ty'" (ppr ann_ty')
-       ; ann_dict_ty <- case replaceClassWithDict_maybe ann_ty' of
-           Just ann_dict_ty -> return ann_dict_ty
+tcDictAnnotation :: PredType  -- ^ The actual type of the dictionary
+                 -> PredType  -- ^ The annotated type
+                 -> TcM ()
+tcDictAnnotation dict_ty ann_ty
+  = do { case replaceClassWithDict_maybe ann_ty of
            -- TODOT Invalid constraints like (a ~ b) and `(Show a, Eq a)` are
            -- not detected by this
-           Nothing -> failWithTc (text "Not a type-class constraint:" <+>
-                                  ppr ann_ty')
-       ; traceTc "ann_dict_ty" (ppr ann_dict_ty)
-       ; (_wrap, wanted) <- addErrCtxt (text "TESTJE") $ -- TODOT
-                            captureConstraints $
-                            tcSubType_NC ctxt ann_dict_ty dict_ty
-       ; _ <- simplifyTop wanted -- TODOT
-       ; failIfErrsM -- TODOT proper error message saying x is not an
-                     -- instantiation of y
-       ; return ann_ty' }
+           Nothing -> failWithTc $
+             text "Not a type-class constraint:" <+> ppr ann_ty
+           Just ann_dict_ty ->
+             do { traceTc "ann_dict_ty" (ppr ann_dict_ty)
+                ; let ctxt = SigmaCtxt -- TODOT
+                ; (_wrap, wanted) <-
+                    addErrCtxt (text "TODOT tcDictAnnotation") $
+                    captureConstraints $
+                    tcSubType_NC ctxt ann_dict_ty dict_ty
+                ; _ <- simplifyTop wanted -- TODOT
+                -- TODOT proper error message saying x is not an instantiation
+                -- of y
+                ; failIfErrsM } }
 
 -- Check whether the Role Criterion holds for an explicit dictionary
 -- application. This criterion determines when it is "safe" to violate the
