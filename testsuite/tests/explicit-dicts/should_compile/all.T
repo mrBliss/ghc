@@ -12,6 +12,7 @@ test('ImportDict', extra_files(['ExportDict.hs']), multimod_compile, ['ImportDic
 test('MultipleConstraints', normal, compile, ['-XDictionaryApplications'])
 test('MultipleMethods', normal, compile, [''])
 test('MultipleMethodsPos', normal, compile, [''])
+test('NoAnnot', normal, compile, ['-XDictionaryApplications'])
 test('NoMethods', normal, compile, [''])
 test('PassDictionariesOrder', normal, compile, ['-XDictionaryApplications'])
 test('PassDictionariesReversed', normal, compile, ['-XDictionaryApplications'])
