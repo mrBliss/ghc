@@ -131,4 +131,5 @@ data Extension
    | Strict
    | StrictData
    | MonadFailDesugaring
+   | DictionaryApplications
    deriving (Eq, Enum, Show, Generic)

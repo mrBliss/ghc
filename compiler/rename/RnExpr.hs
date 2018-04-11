@@ -149,9 +149,14 @@ rnExpr (HsOverLit lit)
   = do { (lit', fvs) <- rnOverLit lit
        ; return (HsOverLit lit', fvs) }
 
-rnExpr e@(HsApp e1 (L _ (HsPar (L _ (HsPar (L _ (ExprWithTySig e2 (HsWC _ sig))))))))
-  = do { traceRn "DICT APP FOUND, REPLACING WITH HsAppDict" (ppr e)
-       ; rnExpr (HsAppDict e1 e2 (Just sig)) }
+rnExpr e@(HsApp e1 e2@(L _ (HsPar (L _ (HsPar (L _ (ExprWithTySig edict (HsWC _ sig))))))))
+  = do { opt_DictionaryApplications <- xoptM LangExt.DictionaryApplications
+       ; if opt_DictionaryApplications
+         then do { traceRn "Dictionary application with signature found" (ppr e)
+                 ; rnExpr (HsAppDict e1 edict (Just sig)) }
+         else do { (e1', fv1) <- rnLExpr e1
+                 ; (e2', fv2) <- rnLExpr e2
+                 ; return (HsApp e1' e2', fv1 `plusFV` fv2) } }
 
 rnExpr (HsApp fun arg)
   = do { (fun',fvFun) <- rnLExpr fun
