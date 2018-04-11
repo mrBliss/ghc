@@ -171,6 +171,15 @@ rnExpr e@(HsApp e1 e2@(L _ (HsPar (L _ (HsPar (L _ (ExprWithTySig edict (HsWC _ 
                  ; (e2', fv2) <- rnLExpr e2
                  ; return (HsApp e1' e2', fv1 `plusFV` fv2) } }
 
+rnExpr e@(HsApp e1 e2@(L _ (HsPar (L _ (HsPar edict)))))
+  = do { opt_DictionaryApplications <- xoptM LangExt.DictionaryApplications
+       ; if opt_DictionaryApplications
+         then do { traceRn "Dictionary application without signature found" (ppr e)
+                 ; rnExpr (HsAppDict e1 edict Nothing) }
+         else do { (e1', fv1) <- rnLExpr e1
+                 ; (e2', fv2) <- rnLExpr e2
+                 ; return (HsApp e1' e2', fv1 `plusFV` fv2) } }
+
 rnExpr (HsApp fun arg)
   = do { (fun',fvFun) <- rnLExpr fun
        ; (arg',fvArg) <- rnLExpr arg
