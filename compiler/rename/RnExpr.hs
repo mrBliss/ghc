@@ -161,9 +161,14 @@ rnExpr (HsOverLit x lit)
               Just neg -> return (HsApp x (noLoc neg) (noLoc (HsOverLit x lit'))
                                  , fvs ) }
 
-rnExpr e@(HsApp _ e1 (L _ (HsPar _ (L _ (HsPar _ (L _ (ExprWithTySig (HsWC _ sig) e2)))))))
-  = do { traceRn "DICT APP FOUND, REPLACING WITH HsAppDict" (ppr e)
-       ; rnExpr (HsAppDict e1 e2 (Just sig)) }
+rnExpr e@(HsApp x e1 e2@(L _ (HsPar _ (L _ (HsPar _ (L _ (ExprWithTySig (HsWC _ sig) edict)))))))
+  = do { opt_DictionaryApplications <- xoptM LangExt.DictionaryApplications
+       ; if opt_DictionaryApplications
+         then do { traceRn "Dictionary application with signature found" (ppr e)
+                 ; rnExpr (HsAppDict e1 edict (Just sig)) }
+         else do { (e1', fv1) <- rnLExpr e1
+                 ; (e2', fv2) <- rnLExpr e2
+                 ; return (HsApp x e1' e2', fv1 `plusFV` fv2) } }
 
 rnExpr (HsApp x fun arg)
   = do { (fun',fvFun) <- rnLExpr fun

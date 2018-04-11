@@ -138,4 +138,5 @@ data Extension
    | NumericUnderscores
    | QuantifiedConstraints
    | StarIsType
+   | DictionaryApplications
    deriving (Eq, Enum, Show, Generic)
