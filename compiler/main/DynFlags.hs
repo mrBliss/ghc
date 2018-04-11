@@ -4011,6 +4011,7 @@ xFlagsDeps = [
   flagSpec "DeriveLift"                       LangExt.DeriveLift,
   flagSpec "DeriveTraversable"                LangExt.DeriveTraversable,
   flagSpec "DerivingStrategies"               LangExt.DerivingStrategies,
+  flagSpec "DictionaryApplications"           LangExt.DictionaryApplications,
   flagSpec "DisambiguateRecordFields"         LangExt.DisambiguateRecordFields,
   flagSpec "DoAndIfThenElse"                  LangExt.DoAndIfThenElse,
   depFlagSpec' "DoRec"                        LangExt.RecursiveDo
