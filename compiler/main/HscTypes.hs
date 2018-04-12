@@ -1973,8 +1973,7 @@ implicitClassThings cl
 
     -- Dictionary datacon (none in case of an abstract class) and its implicit
     -- things
-    maybe [] (\dc -> AConLike (RealDataCon dc) : dataConImplicitTyThings dc)
-             (tyConSingleDataCon_maybe dict_tycon) ++
+    implicitTyConThings dict_tycon ++
 
     -- associated types
     --    No recursive call for the classATs, because they
