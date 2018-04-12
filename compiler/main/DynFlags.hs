@@ -814,6 +814,7 @@ data WarningFlag =
    | Opt_WarnInaccessibleCode
    | Opt_WarnStarIsType                   -- Since 8.6
    | Opt_WarnImplicitKindVars             -- Since 8.6
+   | Opt_WarnIncoherence
    deriving (Eq, Show, Enum)
 
 data Language = Haskell98 | Haskell2010
@@ -3857,7 +3858,8 @@ wWarningFlagsDeps = [
   flagSpec "missing-home-modules"        Opt_WarnMissingHomeModules,
   flagSpec "unrecognised-warning-flags"  Opt_WarnUnrecognisedWarningFlags,
   flagSpec "star-is-type"                Opt_WarnStarIsType,
-  flagSpec "partial-fields"              Opt_WarnPartialFields ]
+  flagSpec "partial-fields"              Opt_WarnPartialFields,
+  flagSpec "incoherence"                 Opt_WarnIncoherence ]
 
 -- | These @-\<blah\>@ flags can all be reversed with @-no-\<blah\>@
 negatableFlagsDeps :: [(Deprecation, FlagSpec GeneralFlag)]
