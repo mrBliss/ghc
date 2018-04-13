@@ -1087,6 +1087,7 @@ getPatSynBinds binds
 hsLInstDeclBinders :: LInstDecl name -> ([Located name], [LFieldOcc name])
 hsLInstDeclBinders (L _ (ClsInstD { cid_inst = ClsInstDecl { cid_datafam_insts = dfis } }))
   = foldMap (hsDataFamInstBinders . unLoc) dfis
+hsLInstDeclBinders (L _ (ClsInstD { cid_inst = ClsInstExpr {} })) = mempty
 hsLInstDeclBinders (L _ (DataFamInstD { dfid_inst = fi }))
   = hsDataFamInstBinders fi
 hsLInstDeclBinders (L _ (TyFamInstD {})) = mempty
