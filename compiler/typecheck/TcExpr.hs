@@ -1416,7 +1416,7 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            ; addTcEvBind ev_binds_var $ mkWantedEvBind ev_id ev_term
            ; let ev_binds = TcEvBinds ev_binds_var
                  wrap1 = mkWpLet ev_binds <.>
-                         mkWpEvApps [EvId ev_id] <.>
+                         mkWpEvVarApps [ev_id] <.>
                          reorder_cts_wrapper <.>
                          mkWpTyApps (mkTyVarTys tvs')
 
