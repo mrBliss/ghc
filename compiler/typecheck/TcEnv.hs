@@ -12,7 +12,7 @@ module TcEnv(
         -- Instance environment, and InstInfo type
         InstInfo(..), iDFunId, pprInstInfoDetails,
         simpleInstInfoClsTy, simpleInstInfoTy, simpleInstInfoTyCon,
-        InstBindings(..),
+        InstBody(..), InstBindings(..), InstDictExpr(..),
 
         -- Global environment
         tcExtendGlobalEnv, tcExtendTyConEnv,
@@ -697,6 +697,7 @@ tcAddDataFamConPlaceholders inst_decls thing_inside
     get_cons (L _ (DataFamInstD { dfid_inst = fid }))  = get_fi_cons fid
     get_cons (L _ (ClsInstD { cid_inst = ClsInstDecl { cid_datafam_insts = fids } }))
       = concatMap (get_fi_cons . unLoc) fids
+    get_cons (L _ (ClsInstD { cid_inst = ClsInstExpr {} })) = []
     get_cons (L _ (ClsInstD _ (XClsInstDecl _))) = panic "get_cons"
     get_cons (L _ (XInstDecl _)) = panic "get_cons"
 
@@ -930,11 +931,15 @@ as well as explicit user written ones.
 data InstInfo a
   = InstInfo
       { iSpec   :: ClsInst          -- Includes the dfun id
-      , iBinds  :: InstBindings a
+      , iBody   :: InstBody a
       }
 
 iDFunId :: InstInfo a -> DFunId
 iDFunId info = instanceDFunId (iSpec info)
+
+data InstBody a
+  = InstBodyBindings (InstBindings a)
+  | InstBodyDictExpr (InstDictExpr a)
 
 data InstBindings a
   = InstBindings
@@ -961,6 +966,18 @@ data InstBindings a
            --          Used only to improve error messages
       }
 
+data InstDictExpr a
+  = InstDictExpr
+      { ide_tyvars  :: [Name]   -- Names of the tyvars from the instance head
+                               -- that are lexically in scope in the bindings
+                               -- Must correspond 1-1 with the forall'd tyvars
+                               -- of the dfun Id.  When typechecking, we are
+                               -- going to extend the typechecker's envt with
+                               --     ib_tyvars -> dfun_forall_tyvars
+
+      , ide_dict_expr :: LHsExpr a  -- Dictionary of the instance methods
+      }
+
 instance (OutputableBndrId (GhcPass a))
        => Outputable (InstInfo (GhcPass a)) where
     ppr = pprInstInfoDetails
@@ -969,9 +986,10 @@ pprInstInfoDetails :: (OutputableBndrId (GhcPass a))
                    => InstInfo (GhcPass a) -> SDoc
 pprInstInfoDetails info
    = hang (pprInstanceHdr (iSpec info) <+> text "where")
-        2 (details (iBinds info))
+        2 (details (iBody info))
   where
-    details (InstBindings { ib_binds = b }) = pprLHsBinds b
+    details (InstBodyBindings (InstBindings { ib_binds = b })) = pprLHsBinds b
+    details (InstBodyDictExpr (InstDictExpr { ide_dict_expr = e })) = ppr e
 
 simpleInstInfoClsTy :: InstInfo a -> (Class, Type)
 simpleInstInfoClsTy info = case instanceHead (iSpec info) of

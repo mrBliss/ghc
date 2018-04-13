@@ -18,6 +18,7 @@ import GhcPrelude
 
 import HsSyn
 import TcBinds
+import TcExpr     ( tcPolyExpr )
 import TcTyClsDecls
 import TcTyDecls ( addTyConsToGblEnv )
 import TcClassDcl( tcClassDecl2, tcATDefault,
@@ -509,7 +510,7 @@ tcClsInstDecl (L loc (ClsInstDecl { cid_poly_ty = poly_ty, cid_binds = binds
                               clas inst_tys
 
         ; let inst_info = InstInfo { iSpec  = ispec
-                                   , iBinds = InstBindings
+                                   , iBody = InstBodyBindings $ InstBindings
                                      { ib_binds = binds
                                      , ib_tyvars = map Var.varName tyvars -- Scope over bindings
                                      , ib_pragmas = uprags
@@ -520,6 +521,36 @@ tcClsInstDecl (L loc (ClsInstDecl { cid_poly_ty = poly_ty, cid_binds = binds
 
         ; return ( [inst_info], tyfam_insts0 ++ concat tyfam_insts1 ++ datafam_insts
                  , deriv_infos ) }
+tcClsInstDecl (L loc (ClsInstExpr { cid_poly_ty = poly_ty, cid_dict_expr = expr
+                                  , cid_overlap_mode = overlap_mode }))
+  = setSrcSpan loc                     $
+    addErrCtxt (instDeclCtxt1 poly_ty) $
+    do  { (tyvars, theta, clas, inst_tys) <- tcHsClsInstType InstDeclCtxt poly_ty
+        ; let mini_env   = mkVarEnv (classTyVars clas `zip` inst_tys)
+              mini_subst = mkTvSubst (mkInScopeSet (mkVarSet tyvars)) mini_env
+
+        -- Build associated types from their defaults if available, otherwise
+        -- warn the user about this
+        ; tyfam_insts1 <- mapM (tcATDefault loc mini_subst emptyNameSet)
+                               (classATItems clas)
+
+        -- Finally, construct the Core representation of the instance.
+        -- (This no longer includes the associated types.)
+        ; dfun_name <- newDFunName clas inst_tys (getLoc (hsSigType poly_ty))
+                -- Dfun location is that of instance *header*
+
+        ; ispec <- newClsInst (fmap unLoc overlap_mode) dfun_name tyvars theta
+                              clas inst_tys
+
+        ; let inst_info = InstInfo { iSpec  = ispec
+                                   , iBody = InstBodyDictExpr $ InstDictExpr
+                                     { ide_dict_expr = expr
+                                       -- Scope over bindings
+                                     , ide_tyvars = map Var.varName tyvars } }
+
+        ; doClsInstErrorChecks inst_info
+
+        ; return ( [inst_info], concat tyfam_insts1, [] ) }
 tcClsInstDecl (L _ (XClsInstDecl _)) = panic "tcClsInstDecl"
 
 doClsInstErrorChecks :: InstInfo GhcRn -> TcM ()
@@ -547,8 +578,12 @@ doClsInstErrorChecks inst_info
   }
   where
     ispec    = iSpec inst_info
-    binds    = iBinds inst_info
-    no_binds = isEmptyLHsBinds (ib_binds binds) && null (ib_pragmas binds)
+    ibody    = iBody inst_info
+    no_binds
+      | InstBodyBindings binds <- ibody
+      = isEmptyLHsBinds (ib_binds binds) && null (ib_pragmas binds)
+      | otherwise
+      = False
     clas_nm  = is_cls_nm ispec
     clas     = is_cls ispec
 
@@ -815,7 +850,7 @@ the default method Ids replete with their INLINE pragmas.  Urk.
 
 tcInstDecl2 :: InstInfo GhcRn -> TcM (LHsBinds GhcTc)
             -- Returns a binding for the dfun
-tcInstDecl2 (InstInfo { iSpec = ispec, iBinds = ibinds })
+tcInstDecl2 (InstInfo { iSpec = ispec, iBody = ibody })
   = recoverM (return emptyLHsBinds)             $
     setSrcSpan loc                              $
     addErrCtxt (instDeclCtxt2 (idType dfun_id)) $
@@ -834,28 +869,37 @@ tcInstDecl2 (InstInfo { iSpec = ispec, iBinds = ibinds })
 
                       -- Deal with 'SPECIALISE instance' pragmas
                       -- See Note [SPECIALISE instance pragmas]
-       ; spec_inst_info@(spec_inst_prags,_) <- tcSpecInstPrags dfun_id ibinds
+       ; spec_inst_info@(spec_inst_prags,_) <- tcSpecInstPrags dfun_id ibody
 
          -- Typecheck superclasses and methods
          -- See Note [Typechecking plan for instance declarations]
        ; dfun_ev_binds_var <- newTcEvBinds
        ; let dfun_ev_binds = TcEvBinds dfun_ev_binds_var
-       ; ((sc_meth_ids, sc_meth_binds, sc_meth_implics), tclvl)
+       ; ((sc_meth_ids, sc_meth_binds, sc_meth_implics, mb_expr), tclvl)
              <- pushTcLevelM $
                 do { (sc_ids, sc_binds, sc_implics)
                         <- tcSuperClasses dfun_id clas inst_tyvars dfun_ev_vars
                                           inst_tys dfun_ev_binds
                                           sc_theta'
 
-                      -- Typecheck the methods
-                   ; (meth_ids, meth_binds, meth_implics)
-                        <- tcMethods dfun_id clas inst_tyvars dfun_ev_vars
-                                     inst_tys dfun_ev_binds spec_inst_info
-                                     op_items ibinds
+                      -- Typecheck the methods or the dictionary expr
+                   ; (meth_ids, meth_binds_or_expr, meth_implics)
+                        <- case ibody of
+                             InstBodyBindings ibinds ->
+                               do { (meth_ids, meth_binds, meth_implics)
+                                      <- tcMethods dfun_id clas inst_tyvars
+                                           dfun_ev_vars inst_tys dfun_ev_binds
+                                           spec_inst_info op_items ibinds
+                                  ; return (meth_ids, Left meth_binds, meth_implics) }
+                             InstBodyDictExpr idict_expr ->
+                               do { expr' <- tcDictExpr clas inst_tyvars
+                                               inst_tys idict_expr
+                                  ; return ([], Right expr', emptyBag) }
 
                    ; return ( sc_ids     ++          meth_ids
-                            , sc_binds   `unionBags` meth_binds
-                            , sc_implics `unionBags` meth_implics ) }
+                            , sc_binds   `unionBags` either id (const emptyBag) meth_binds_or_expr
+                            , sc_implics `unionBags` meth_implics
+                            , either (const Nothing) Just meth_binds_or_expr ) }
 
        ; env <- getLclEnv
        ; emitImplication $
@@ -871,7 +915,15 @@ tcInstDecl2 (InstInfo { iSpec = ispec, iBinds = ibinds })
        ; self_dict <- newDict clas inst_tys
        ; let class_tc      = classTyCon clas
              [dict_constr] = tyConDataCons class_tc
-             dict_bind     = mkVarBind self_dict (L loc con_app_args)
+             dict_bind     = mkVarBind self_dict $
+                             case mb_expr of
+                               Just expr ->
+                                 let dict_tc = classDictTyCon clas
+                                     dict_to_class = dictTyConCo dict_tc
+                                     coercion = mkTcUnbranchedAxInstCo
+                                                  dict_to_class inst_tys []
+                                 in mkHsWrapCoR coercion <$> expr
+                               Nothing -> L loc con_app_args
 
                      -- We don't produce a binding for the dict_constr; instead we
                      -- rely on the simplifier to unfold this saturated application
@@ -897,7 +949,10 @@ tcInstDecl2 (InstInfo { iSpec = ispec, iBinds = ibinds })
              arg_wrapper = mkWpEvVarApps dfun_ev_vars <.> mkWpTyApps inst_tv_tys
 
              is_newtype = isNewTyCon class_tc
-             dfun_id_w_prags = addDFunPrags dfun_id sc_meth_ids
+             dfun_id_w_prags
+                | Just _ <- mb_expr = dfun_id
+                | otherwise         = addDFunPrags dfun_id sc_meth_ids
+                   -- No unfoldings for instance C = expr
              dfun_spec_prags
                 | is_newtype = SpecPrags []
                 | otherwise  = SpecPrags spec_inst_prags
@@ -1665,6 +1720,22 @@ mkDefMethBind clas inst_tys sel_id dm_name
        -- See Note [Default methods in instances]
 
 ----------------------
+tcDictExpr :: Class
+           -> [TcTyVar]
+           -> [TcType]
+           -> InstDictExpr GhcRn
+           -> TcM (LHsExpr GhcTc)
+tcDictExpr clas tyvars inst_tys
+           (InstDictExpr { ide_tyvars = lexical_tvs
+                         , ide_dict_expr = expr })
+  = tcExtendNameTyVarEnv (lexical_tvs `zip` tyvars) $
+    do { traceTc "tcDictExpr" (ppr expr)
+       ; let dict_tycon = classDictTyCon clas
+             dict_type = mkTyConApp dict_tycon inst_tys
+       ; tcPolyExpr expr dict_type }
+
+
+----------------------
 derivBindCtxt :: Id -> Class -> [Type ] -> SDoc
 derivBindCtxt sel_id clas tys
    = vcat [ text "When typechecking the code for" <+> quotes (ppr sel_id)
@@ -1852,13 +1923,15 @@ Note that
     just once, and pass the result (in spec_inst_info) to tcMethods.
 -}
 
-tcSpecInstPrags :: DFunId -> InstBindings GhcRn
+tcSpecInstPrags :: DFunId -> InstBody GhcRn
                 -> TcM ([Located TcSpecPrag], TcPragEnv)
-tcSpecInstPrags dfun_id (InstBindings { ib_binds = binds, ib_pragmas = uprags })
+tcSpecInstPrags dfun_id (InstBodyBindings
+                         (InstBindings { ib_binds = binds, ib_pragmas = uprags }))
   = do { spec_inst_prags <- mapM (wrapLocM (tcSpecInst dfun_id)) $
                             filter isSpecInstLSig uprags
              -- The filter removes the pragmas for methods
        ; return (spec_inst_prags, mkPragEnv uprags binds) }
+tcSpecInstPrags _ _ = return ([], emptyPragEnv)
 
 ------------------------------
 tcSpecInst :: Id -> Sig GhcRn -> TcM TcSpecPrag

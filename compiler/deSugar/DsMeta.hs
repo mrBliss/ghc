@@ -494,6 +494,7 @@ repInstD (L loc (ClsInstD { cid_inst = cls_decl }))
 repInstD (L _ (XInstDecl _)) = panic "repInstD"
 
 repClsInstD :: ClsInstDecl GhcRn -> DsM (Core TH.DecQ)
+repClsInstD (ClsInstExpr {}) = pprPanic "TODOT repClsInstD" empty
 repClsInstD (ClsInstDecl { cid_poly_ty = ty, cid_binds = binds
                          , cid_sigs = sigs, cid_tyfam_insts = ats
                          , cid_datafam_insts = adts

@@ -1109,13 +1109,23 @@ ty_decl :: { LTyClDecl GhcPs }
 
 inst_decl :: { LInstDecl GhcPs }
         : 'instance' overlap_pragma inst_type where_inst
-       {% do { (binds, sigs, _, ats, adts, _) <- cvBindsAndSigs (snd $ unLoc $4)
-             ; let cid = ClsInstDecl { cid_ext = noExt
-                                     , cid_poly_ty = $3, cid_binds = binds
-                                     , cid_sigs = mkClassOpSigs sigs
-                                     , cid_tyfam_insts = ats
-                                     , cid_overlap_mode = $2
-                                     , cid_datafam_insts = adts }
+
+       {% do { cid <- case snd $ unLoc $4 of
+                 Left decls ->
+                   do { (binds, sigs, _, ats, adts, _) <- cvBindsAndSigs decls
+                      ; return ClsInstDecl
+                          { cid_ext = noExt
+                          , cid_poly_ty = $3
+                          , cid_binds = binds
+                          , cid_sigs = mkClassOpSigs sigs
+                          , cid_tyfam_insts = ats
+                          , cid_overlap_mode = $2
+                          , cid_datafam_insts = adts } }
+                 Right expr ->
+                   return ClsInstExpr
+                     { cid_poly_ty = $3
+                     , cid_dict_expr = expr
+                     , cid_overlap_mode = $2 }
              ; ams (L (comb3 $1 (hsSigType $3) $4) (ClsInstD { cid_d_ext = noExt, cid_inst = cid }))
                    (mj AnnInstance $1 : (fst $ unLoc $4)) } }
 
@@ -1539,12 +1549,15 @@ decllist_inst
 -- Instance body
 --
 where_inst :: { Located ([AddAnn]
-                        , OrdList (LHsDecl GhcPs)) }   -- Reversed
+                        , Either (OrdList (LHsDecl GhcPs))  -- Reversed
+                                 (LHsExpr GhcPs)) }
                                 -- No implicit parameters
                                 -- May have type declarations
         : 'where' decllist_inst         { sLL $1 $> (mj AnnWhere $1:(fst $ unLoc $2)
-                                             ,(snd $ unLoc $2)) }
-        | {- empty -}                   { noLoc ([],nilOL) }
+                                                    , Left (snd $ unLoc $2)) }
+        | '=' exp                       { sLL $1 $> ([mj AnnEqual $1], Right $2) }
+
+        | {- empty -}                   { noLoc ([], Left nilOL) }
 
 -- Declarations in binding groups other than classes and instances
 --

@@ -740,6 +740,7 @@ getLocalNonValBinders fixity_env
     new_assoc overload_ok (L _ (DataFamInstD _ d))
       = do { (avail, flds) <- new_di overload_ok Nothing d
            ; return ([avail], flds) }
+    new_assoc _ (L _ (ClsInstD _ (ClsInstExpr {} ))) = return ([], [])
     new_assoc overload_ok (L _ (ClsInstD _ (ClsInstDecl { cid_poly_ty = inst_ty
                                                       , cid_datafam_insts = adts })))
       | Just (L loc cls_rdr) <- getLHsInstDeclClass_maybe inst_ty
