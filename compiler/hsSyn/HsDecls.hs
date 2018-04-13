@@ -1462,6 +1462,26 @@ data ClsInstDecl pass
     --           'ApiAnnotation.AnnOpen','ApiAnnotation.AnnClose',
 
     -- For details on above see note [Api annotations] in ApiAnnotation
+
+  | ClsInstExpr
+      { cid_poly_ty :: LHsSigType pass    -- Context => Class Instance-type
+                                          -- Using a polytype means that the renamer conveniently
+                                          -- figures out the quantified type variables for us.
+      , cid_dict_expr :: (LHsExpr pass)   -- A dictionary expression
+      , cid_overlap_mode :: Maybe (Located OverlapMode)
+         -- ^ - 'ApiAnnotation.AnnKeywordId' : 'ApiAnnotation.AnnOpen',
+         --                                    'ApiAnnotation.AnnClose',
+
+        -- For details on above see note [Api annotations] in ApiAnnotation
+      }
+    -- ^
+    --  - 'ApiAnnotation.AnnKeywordId' : 'ApiAnnotation.AnnInstance',
+    --           'ApiAnnotation.AnnEqual',
+
+    -- TODOT check the crap above
+
+    -- For details on above see note [Api annotations] in ApiAnnotation
+
 deriving instance (DataId id) => Data (ClsInstDecl id)
 
 
@@ -1558,6 +1578,10 @@ pprFamInstLHS thing typats fixity context mb_kind_sig
 
 instance (SourceTextX pass, OutputableBndrId pass)
        => Outputable (ClsInstDecl pass) where
+    ppr (ClsInstExpr { cid_poly_ty = inst_ty, cid_dict_expr = expr
+                     , cid_overlap_mode = mbOverlap })
+      = text "instance" <+> ppOverlapPragma mbOverlap <+> ppr inst_ty <+>
+        char '=' <+> ppr expr
     ppr (ClsInstDecl { cid_poly_ty = inst_ty, cid_binds = binds
                      , cid_sigs = sigs, cid_tyfam_insts = ats
                      , cid_overlap_mode = mbOverlap
@@ -1609,6 +1633,7 @@ instDeclDataFamInsts inst_decls
   where
     do_one (L _ (ClsInstD { cid_inst = ClsInstDecl { cid_datafam_insts = fam_insts } }))
       = map unLoc fam_insts
+    do_one (L _ (ClsInstD { cid_inst = ClsInstExpr {} }))     = []
     do_one (L _ (DataFamInstD { dfid_inst = fam_inst }))      = [fam_inst]
     do_one (L _ (TyFamInstD {}))                              = []
 

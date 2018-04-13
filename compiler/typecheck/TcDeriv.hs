@@ -349,14 +349,16 @@ renameDeriv is_boot inst_infos bagBinds
 
   where
     rn_inst_info :: InstInfo GhcPs -> TcM (InstInfo GhcRn, FreeVars)
+    rn_inst_info (InstInfo { iBody = InstBodyDictExpr {} })
+      = pprPanic "rn_inst_info: derived classes must have bindings" empty
     rn_inst_info
       inst_info@(InstInfo { iSpec = inst
-                          , iBinds = InstBindings
+                          , iBody = InstBodyBindings (InstBindings
                             { ib_binds = binds
                             , ib_tyvars = tyvars
                             , ib_pragmas = sigs
                             , ib_extensions = exts -- Only for type-checking
-                            , ib_derived = sa } })
+                            , ib_derived = sa }) })
         =  ASSERT( null sigs )
            bindLocalNamesFV tyvars $
            do { (rn_binds,_, fvs) <- rnMethodBinds False (is_cls_nm inst) [] binds []
@@ -365,7 +367,7 @@ renameDeriv is_boot inst_infos bagBinds
                                           , ib_pragmas = []
                                           , ib_extensions = exts
                                           , ib_derived = sa }
-              ; return (inst_info { iBinds = binds' }, fvs) }
+              ; return (inst_info { iBody = InstBodyBindings binds' }, fvs) }
 
 {-
 Note [Newtype deriving and unused constructors]
@@ -1661,7 +1663,7 @@ genInst spec@(DS { ds_tvs = tvs, ds_tc = rep_tycon
              traceTc "newder" (ppr inst_spec)
              return $ InstInfo
                        { iSpec   = inst_spec
-                       , iBinds  = InstBindings
+                       , iBody  = InstBodyBindings $ InstBindings
                                      { ib_binds = meth_binds
                                      , ib_tyvars = map Var.varName tvs
                                      , ib_pragmas = []

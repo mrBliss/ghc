@@ -678,6 +678,20 @@ rnClsInstDecl (ClsInstDecl { cid_poly_ty = inst_ty, cid_binds = mbinds
              --     the instance context after renaming.  This is a bit
              --     strange, but should not matter (and it would be more work
              --     to remove the context).
+rnClsInstDecl (ClsInstExpr { cid_poly_ty = inst_ty, cid_dict_expr = expr
+                           , cid_overlap_mode = oflag })
+  = do { (inst_ty', inst_fvs) <- rnLHsInstType (text "an instance declaration") inst_ty
+       ; let (ktv_names, _, _) = splitLHsInstDeclTy inst_ty'
+       ; scoped_tvs <- xoptM LangExt.ScopedTypeVariables
+       ; let maybe_extend_tyvar_env thing_inside
+               | scoped_tvs = extendTyVarEnvFVRn ktv_names thing_inside
+               | otherwise  = thing_inside
+       ; (expr', expr_fvs) <- maybe_extend_tyvar_env $ rnLExpr expr
+
+       ; let all_fvs = expr_fvs `plusFV` inst_fvs
+       ; return (ClsInstExpr { cid_poly_ty = inst_ty', cid_dict_expr = expr'
+                             , cid_overlap_mode = oflag },
+                 all_fvs) }
 
 rnFamInstEqn :: HsDocContext
              -> Maybe (Name, [Name]) -- Nothing => not associated
