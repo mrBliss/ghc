@@ -869,23 +869,24 @@ tcInstDecl2 (InstInfo { iSpec = ispec, iBody = ibody })
                                           sc_theta'
 
                       -- Typecheck the methods or the dictionary expr
-                   ; (meth_ids, meth_binds_or_expr, meth_implics)
+                   ; (meth_ids, meth_binds, meth_implics, mb_expr)
                         <- case ibody of
                              InstBodyBindings ibinds ->
                                do { (meth_ids, meth_binds, meth_implics)
                                       <- tcMethods dfun_id clas inst_tyvars
                                            dfun_ev_vars inst_tys dfun_ev_binds
                                            spec_inst_info op_items ibinds
-                                  ; return (meth_ids, Left meth_binds, meth_implics) }
+                                  ; return (meth_ids, meth_binds, meth_implics, Nothing) }
                              InstBodyDictExpr idict_expr ->
-                               do { expr' <- tcDictExpr clas inst_tyvars
-                                               inst_tys idict_expr
-                                  ; return ([], Right expr', emptyBag) }
+                               do { (expr', bind, implic)
+                                      <- tcDictExpr clas inst_tyvars dfun_ev_vars
+                                           inst_tys dfun_ev_binds idict_expr
+                                  ; return ([], unitBag bind, unitBag implic, Just expr') }
 
                    ; return ( sc_ids     ++          meth_ids
-                            , sc_binds   `unionBags` either id (const emptyBag) meth_binds_or_expr
+                            , sc_binds   `unionBags` meth_binds
                             , sc_implics `unionBags` meth_implics
-                            , either (const Nothing) Just meth_binds_or_expr ) }
+                            , mb_expr ) }
 
        ; env <- getLclEnv
        ; emitImplication $
@@ -902,14 +903,7 @@ tcInstDecl2 (InstInfo { iSpec = ispec, iBody = ibody })
        ; let class_tc      = classTyCon clas
              [dict_constr] = tyConDataCons class_tc
              dict_bind     = mkVarBind self_dict $
-                             case mb_expr of
-                               Just expr ->
-                                 let dict_tc = classDictTyCon clas
-                                     dict_to_class = dictTyConCo dict_tc
-                                     coercion = mkTcUnbranchedAxInstCo
-                                                  dict_to_class inst_tys []
-                                 in mkHsWrapCoR coercion <$> expr
-                               Nothing -> L loc con_app_args
+                             fromMaybe (L loc con_app_args) mb_expr
 
                      -- We don't produce a binding for the dict_constr; instead we
                      -- rely on the simplifier to unfold this saturated application
@@ -1662,17 +1656,35 @@ mkDefMethBind clas inst_tys sel_id dm_name
 ----------------------
 tcDictExpr :: Class
            -> [TcTyVar]
+           -> [EvVar]
            -> [TcType]
+           -> TcEvBinds
            -> InstDictExpr GhcRn
-           -> TcM (LHsExpr GhcTc)
-tcDictExpr clas tyvars inst_tys
+           -> TcM (LHsExpr GhcTc, LHsBind GhcTc, Implication)
+tcDictExpr clas tyvars dfun_ev_vars inst_tys dfun_ev_binds
            (InstDictExpr { ide_tyvars = lexical_tvs
                          , ide_dict_expr = expr })
   = tcExtendTyVarEnv2 (lexical_tvs `zip` tyvars) $
     do { traceTc "tcDictExpr" (ppr expr)
        ; let dict_tycon = classDictTyCon clas
              dict_type = mkTyConApp dict_tycon inst_tys
-       ; tcPolyExpr expr dict_type }
+       ; (implic, ev_binds_var, expr')
+           <- checkInstConstraints $ tcPolyExpr expr dict_type
+       ; let local_ev_binds = TcEvBinds ev_binds_var
+             full_bind = AbsBinds
+               { abs_tvs      = tyvars
+               , abs_ev_vars  = dfun_ev_vars
+               , abs_exports  = []
+               , abs_ev_binds = [dfun_ev_binds, local_ev_binds]
+               , abs_binds    = emptyBag
+               , abs_sig      = False
+               }
+             dict_to_class = dictTyConCo (classDictTyCon clas)
+             coercion = mkTcUnbranchedAxInstCo dict_to_class inst_tys []
+             wrapper = mkWpLet dfun_ev_binds <.>
+                       mkWpLet local_ev_binds <.>
+                       mkWpCastR coercion
+       ; return (mkLHsWrap wrapper expr', L (getLoc expr') full_bind, implic) }
 
 
 ----------------------
