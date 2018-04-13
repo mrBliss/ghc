@@ -13,6 +13,10 @@ test('MultipleConstraints', normal, compile, ['-XDictionaryApplications'])
 test('MultipleDictsWithSameTyVar', normal, compile, ['-XDictionaryApplications'])
 test('MultipleMethods', normal, compile, [''])
 test('MultipleMethodsPos', normal, compile, [''])
+test('NewtypeDictBoot', normal, multi_compile,
+     ['NewtypeDictBoot', [('NewtypeDictBoot.hs-boot', ''),
+                          ('NewtypeDictBoota.hs', ''),
+                          ('NewtypeDictBoot.hs', '')], ''])
 test('NoAnnot', normal, compile, ['-XDictionaryApplications'])
 test('NoMethods', normal, compile, [''])
 test('PassDictionariesOrder', normal, compile, ['-XDictionaryApplications'])
