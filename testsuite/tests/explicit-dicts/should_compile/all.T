@@ -9,6 +9,7 @@ test('ExplicitImportDict', extra_files(['ExplicitExportDict.hs']), multimod_comp
 test('ForAllMethod', normal, compile, [''])
 test('FunDeps', normal, compile, ['-XDictionaryApplications'])
 test('ImportDict', extra_files(['ExportDict.hs']), multimod_compile, ['ImportDict', '-v0'])
+test('InstanceExprWithContext', normal, compile, [''])
 test('MultipleConstraints', normal, compile, ['-XDictionaryApplications'])
 test('MultipleDictsWithSameTyVar', normal, compile, ['-XDictionaryApplications'])
 test('MultipleMethods', normal, compile, [''])
