@@ -663,7 +663,7 @@ data WarningFlag =
    | Opt_WarnCPPUndef                     -- Since 8.2
    | Opt_WarnUnbangedStrictPatterns       -- Since 8.2
    | Opt_WarnMissingHomeModules           -- Since 8.2
-   | Opt_WarnIncoherence
+   | Opt_WarnSearchIncoherence
    deriving (Eq, Show, Enum)
 
 data Language = Haskell98 | Haskell2010
@@ -3633,7 +3633,7 @@ wWarningFlagsDeps = [
                                     Opt_WarnMissingPatternSynonymSignatures,
   flagSpec "simplifiable-class-constraints" Opt_WarnSimplifiableClassConstraints,
   flagSpec "missing-home-modules"        Opt_WarnMissingHomeModules,
-  flagSpec "incoherence"                 Opt_WarnIncoherence,
+  flagSpec "search-incoherence"          Opt_WarnSearchIncoherence,
   flagSpec "unrecognised-warning-flags"  Opt_WarnUnrecognisedWarningFlags ]
 
 -- | These @-\<blah\>@ flags can all be reversed with @-no-\<blah\>@
