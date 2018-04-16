@@ -748,6 +748,7 @@ data WarningFlag =
    | Opt_WarnMissingHomeModules           -- Since 8.2
    | Opt_WarnPartialFields                -- Since 8.4
    | Opt_WarnMissingExportList
+   | Opt_WarnIncoherence
    | Opt_WarnSearchIncoherence
    deriving (Eq, Show, Enum)
 
@@ -3760,6 +3761,7 @@ wWarningFlagsDeps = [
   flagSpec "missing-home-modules"        Opt_WarnMissingHomeModules,
   flagSpec "unrecognised-warning-flags"  Opt_WarnUnrecognisedWarningFlags,
   flagSpec "partial-fields"              Opt_WarnPartialFields,
+  flagSpec "incoherence"                 Opt_WarnIncoherence,
   flagSpec "search-incoherence"          Opt_WarnSearchIncoherence ]
 
 -- | These @-\<blah\>@ flags can all be reversed with @-no-\<blah\>@
@@ -4386,7 +4388,8 @@ standardWarnings -- see Note [Documenting warning flags]
         Opt_WarnUnsupportedLlvmVersion,
         Opt_WarnTabs,
         Opt_WarnUnrecognisedWarningFlags,
-        Opt_WarnSimplifiableClassConstraints
+        Opt_WarnSimplifiableClassConstraints,
+        Opt_WarnIncoherence
       ]
 
 -- | Things you get with -W

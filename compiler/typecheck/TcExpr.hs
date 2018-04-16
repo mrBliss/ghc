@@ -1372,7 +1372,9 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
                <- extractMatchingConstraint mb_ann_ty' dict_ty theta fun_ty
 
            ; tcCheckDictAppRoleCriterion matched tau
-           ; tcCheckDictAppCoherence tvs (theta_before ++ theta_after) matched
+           ; dflags <- getDynFlags
+           ; when (wopt Opt_WarnIncoherence dflags) $
+               tcCheckDictAppCoherence tvs (theta_before ++ theta_after) matched
 
            -- Instantiate the type variables in the type
            ; (subst, tvs') <- mapAccumLM newMetaTyVarX empty_subst tvs
@@ -1633,7 +1635,7 @@ tcCheckDictAppCoherence skol_tvs remainder constraint
          -- incoherence when incoherence is detected with the quicker check.
        ; when (or entailment_checks) $ do
        { causes <- tcDictAppIncoherenceCauses skol_tvs remainder constraint
-       ; failWithTc $ vcat
+       ; addWarnTc (Reason Opt_WarnIncoherence) $ vcat
          [ text "Explicit dictionary application to:" <+> quotes (ppr constraint)
          , text "is not allowed because of possible incoherence:"
          , nest 2 $ vcat (map ppr causes) ] } }

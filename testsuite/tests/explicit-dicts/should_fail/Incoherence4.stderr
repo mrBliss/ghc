@@ -1,5 +1,5 @@
 
-Incoherence4.hs:13:12: error:
+Incoherence4.hs:13:12: error: [-Wincoherence (in -Wdefault), -Werror=incoherence]
     • Explicit dictionary application to: ‘C a’
       is not allowed because of possible incoherence:
         Through an ancestor: ‘A a’ occurs in the context
