@@ -381,19 +381,19 @@ checkValidType ctxt ty
 checkPossibleIncoherence :: UserTypeCtxt -> Type -> TcM ()
 checkPossibleIncoherence ctxt ty
   = do { dflags <- getDynFlags
-       ; when (is_user_sig && wopt Opt_WarnIncoherence dflags) $ do
+       ; when (is_user_sig && wopt Opt_WarnSearchIncoherence dflags) $ do
        {
        ; let (tvs, theta, _tau) = tcSplitSigmaTy ty
        ; cause_found_ref <- liftIO $ newIORef False
        ; forM_ (select theta) $ \(ct, remainder) ->
            do { causes <- tcDictAppIncoherenceCauses tvs remainder ct
               ; forM_ causes $ \cause -> (liftIO $writeIORef cause_found_ref True) >>
-                  addWarnTc (Reason Opt_WarnIncoherence)
+                  addWarnTc (Reason Opt_WarnSearchIncoherence)
                     (text (icCode cause) <+> ppr cause)
               }
        ; cause_found <- liftIO $ readIORef cause_found_ref
        ; unless cause_found $
-         addWarnTc (Reason Opt_WarnIncoherence) $
+         addWarnTc (Reason Opt_WarnSearchIncoherence) $
            text "INCO:0" <+> text "No possible incoherence"
        } }
   where
