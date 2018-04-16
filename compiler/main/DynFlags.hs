@@ -663,6 +663,7 @@ data WarningFlag =
    | Opt_WarnCPPUndef                     -- Since 8.2
    | Opt_WarnUnbangedStrictPatterns       -- Since 8.2
    | Opt_WarnMissingHomeModules           -- Since 8.2
+   | Opt_WarnIncoherence
    | Opt_WarnSearchIncoherence
    deriving (Eq, Show, Enum)
 
@@ -3633,6 +3634,7 @@ wWarningFlagsDeps = [
                                     Opt_WarnMissingPatternSynonymSignatures,
   flagSpec "simplifiable-class-constraints" Opt_WarnSimplifiableClassConstraints,
   flagSpec "missing-home-modules"        Opt_WarnMissingHomeModules,
+  flagSpec "incoherence"                 Opt_WarnIncoherence,
   flagSpec "search-incoherence"          Opt_WarnSearchIncoherence,
   flagSpec "unrecognised-warning-flags"  Opt_WarnUnrecognisedWarningFlags ]
 
@@ -4252,7 +4254,8 @@ standardWarnings -- see Note [Documenting warning flags]
         Opt_WarnUnsupportedLlvmVersion,
         Opt_WarnTabs,
         Opt_WarnUnrecognisedWarningFlags,
-        Opt_WarnSimplifiableClassConstraints
+        Opt_WarnSimplifiableClassConstraints,
+        Opt_WarnIncoherence
       ]
 
 -- | Things you get with -W

@@ -1,7 +1,10 @@
 
-Incoherence4.hs:13:12: error:
+Incoherence4.hs:13:12: warning: [-Wincoherence (in -Wdefault)]
     • Explicit dictionary application to: ‘C a’
       is not allowed because of possible incoherence:
         Through an ancestor: ‘A a’ occurs in the context
     • In the expression: foo dict
       In an equation for ‘bar’: bar dict = foo dict
+
+<no location info>: error: 
+Failing due to -Werror.

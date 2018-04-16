@@ -1,5 +1,12 @@
 
-Incoherence5.hs:18:8: error:
+Incoherence5.hs:10:6: warning: [-Wsimplifiable-class-constraints (in -Wdefault)]
+    • The constraint ‘SomeClass a’ matches an instance declaration
+      instance SomeClass a -- Defined at Incoherence5.hs:7:10
+      This makes type inference for inner bindings fragile;
+        either use MonoLocalBinds, or simplify it using the instance
+    • In the type signature: f :: SomeClass a => a -> a
+
+Incoherence5.hs:18:8: warning: [-Wincoherence (in -Wdefault)]
     • Explicit dictionary application to: ‘SomeClass a’
       is not allowed because of possible incoherence:
         There is a global instance for ‘SomeClass a’
@@ -9,3 +16,6 @@ Incoherence5.hs:18:8: error:
             = f notDict True
             where
                 notDict = SomeClass.Dict not
+
+<no location info>: error: 
+Failing due to -Werror.

@@ -6,7 +6,7 @@ SomeMethodFunction.hs:9:6: warning: [-Wsimplifiable-class-constraints (in -Wdefa
         either use MonoLocalBinds, or simplify it using the instance
     • In the type signature: f :: SomeClass a => a -> a
 
-OverrideSomeMethodFunction.hs:13:8: error:
+OverrideSomeMethodFunction.hs:13:8: warning: [-Wincoherence (in -Wdefault)]
     • Explicit dictionary application to: ‘SomeClass a’
       is not allowed because of possible incoherence:
         There is a global instance for ‘SomeClass a’
@@ -16,3 +16,6 @@ OverrideSomeMethodFunction.hs:13:8: error:
             = f notDict True
             where
                 notDict = SomeClass.Dict not
+
+<no location info>: error: 
+Failing due to -Werror.
