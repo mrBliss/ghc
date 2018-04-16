@@ -814,6 +814,7 @@ data WarningFlag =
    | Opt_WarnInaccessibleCode
    | Opt_WarnStarIsType                   -- Since 8.6
    | Opt_WarnImplicitKindVars             -- Since 8.6
+   | Opt_WarnIncoherence
    | Opt_WarnSearchIncoherence
    deriving (Eq, Show, Enum)
 
@@ -3859,6 +3860,7 @@ wWarningFlagsDeps = [
   flagSpec "unrecognised-warning-flags"  Opt_WarnUnrecognisedWarningFlags,
   flagSpec "star-is-type"                Opt_WarnStarIsType,
   flagSpec "partial-fields"              Opt_WarnPartialFields,
+  flagSpec "incoherence"                 Opt_WarnIncoherence,
   flagSpec "search-incoherence"          Opt_WarnSearchIncoherence ]
 
 -- | These @-\<blah\>@ flags can all be reversed with @-no-\<blah\>@
@@ -4559,7 +4561,8 @@ standardWarnings -- see Note [Documenting warning flags]
         Opt_WarnTabs,
         Opt_WarnUnrecognisedWarningFlags,
         Opt_WarnSimplifiableClassConstraints,
-        Opt_WarnInaccessibleCode
+        Opt_WarnInaccessibleCode,
+        Opt_WarnIncoherence
       ]
 
 -- | Things you get with -W

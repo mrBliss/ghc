@@ -1,5 +1,5 @@
 
-Incoherence2.hs:9:12: error:
+Incoherence2.hs:9:12: error: [-Wincoherence (in -Wdefault), -Werror=incoherence]
     • Explicit dictionary application to: ‘Ord a’
       is not allowed because of possible incoherence:
         Through an ancestor: ‘Eq a’ occurs in the context
