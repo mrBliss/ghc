@@ -12,7 +12,6 @@ test('ImportDict', extra_files(['ExportDict.hs']), multimod_compile, ['ImportDic
 test('InstanceExprWithContext', normal, compile, [''])
 test('MonadConstraints', normal, compile, ['-XDictionaryApplications -Wno-incoherence'])
 test('MultipleConstraints', normal, compile, ['-XDictionaryApplications'])
-test('MultipleDictsWithSameTyVar', normal, compile, ['-XDictionaryApplications'])
 test('MultipleMethods', normal, compile, [''])
 test('MultipleMethodsPos', normal, compile, [''])
 test('NewtypeDictBoot', normal, multi_compile,
