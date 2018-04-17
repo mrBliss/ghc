@@ -4,8 +4,8 @@ Incoherence1.hs:9:12: warning: [-Wincoherence (in -Wdefault)]
       is not allowed because of possible incoherence:
         ‘Eq a’ is the ancestor of another constraint in the context:
         ‘Ord a’
-    • In the expression: foo dict
-      In an equation for ‘bar’: bar dict = foo dict
+    • In the expression: foo ((dict :: Eq a))
+      In an equation for ‘bar’: bar dict = foo ((dict :: Eq a))
 
 <no location info>: error: 
 Failing due to -Werror.

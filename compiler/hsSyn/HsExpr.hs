@@ -1047,22 +1047,31 @@ ppr_expr (HsRecFld f) = ppr f
 -- | Located Haskell Wildcard Type Expression
 data LHsWcTypeX = forall id. (OutputableBndrId id) => LHsWcTypeX (LHsWcType id)
 
+data HsPprArg id
+  = HsPprExprArg (LHsExpr id)
+  | HsPprTypeArg LHsWcTypeX
+  | HsPprDictArg (LHsExpr id) (Maybe (LHsSigType id))
+
 ppr_apps :: (OutputableBndrId id) => HsExpr id
-         -> [Either (LHsExpr id) LHsWcTypeX]
+         -> [HsPprArg id]
          -> SDoc
 ppr_apps (HsApp (L _ fun) arg)        args
-  = ppr_apps fun (Left arg : args)
+  = ppr_apps fun (HsPprExprArg arg : args)
 ppr_apps (HsAppType (L _ fun) arg)    args
-  = ppr_apps fun (Right (LHsWcTypeX arg) : args)
+  = ppr_apps fun (HsPprTypeArg (LHsWcTypeX arg) : args)
 ppr_apps (HsAppTypeOut (L _ fun) arg) args
-  = ppr_apps fun (Right (LHsWcTypeX arg) : args)
-ppr_apps (HsAppDict (L _ fun) dict _mb_ty) args -- TODOT
-  = ppr_apps fun (Left dict : args)
+  = ppr_apps fun (HsPprTypeArg (LHsWcTypeX arg) : args)
+ppr_apps (HsAppDict (L _ fun) dict mb_ann_ty) args
+  = ppr_apps fun (HsPprDictArg dict mb_ann_ty : args)
 ppr_apps fun args = hang (ppr_expr fun) 2 (sep (map pp args))
   where
-    pp (Left arg)                             = ppr arg
-    pp (Right (LHsWcTypeX (HsWC { hswc_body = L _ arg })))
+    pp (HsPprExprArg arg) = ppr arg
+    pp (HsPprTypeArg (LHsWcTypeX (HsWC { hswc_body = L _ arg })))
       = char '@' <> pprParendHsType arg
+    pp (HsPprDictArg dict mb_ann_ty)
+      = parens $ parens $ case mb_ann_ty of
+          Nothing -> ppr dict
+          Just ann_ty -> ppr dict <+> dcolon <+> ppr ann_ty
 
 pprExternalSrcLoc :: (StringLiteral,(Int,Int),(Int,Int)) -> SDoc
 pprExternalSrcLoc (StringLiteral _ src,(n1,n2),(n3,n4))

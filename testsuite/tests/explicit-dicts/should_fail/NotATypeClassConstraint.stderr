@@ -1,9 +1,9 @@
 
 NotATypeClassConstraint.hs:10:5: error:
     • Not a type-class constraint: forall (c :: Constraint). c
-    • In the expression: f eqInt Proxy
+    • In the expression: f ((eqInt :: c)) Proxy
       In an equation for ‘g’:
-          g = f eqInt Proxy
+          g = f ((eqInt :: c)) Proxy
             where
                 eqInt :: Eq.Dict Int
                 eqInt = Eq.Dict (==) (/=)

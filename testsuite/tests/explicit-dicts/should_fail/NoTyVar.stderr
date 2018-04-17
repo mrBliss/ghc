@@ -1,5 +1,6 @@
 
 NoTyVar.hs:13:13: error:
     • Explicit dictionary application not allowed
-    • In the expression: maxInt absOrd
-      In an equation for ‘maxAbsInt’: maxAbsInt = maxInt absOrd
+    • In the expression: maxInt ((absOrd :: Ord Int))
+      In an equation for ‘maxAbsInt’:
+          maxAbsInt = maxInt ((absOrd :: Ord Int))

@@ -3,8 +3,8 @@ Incoherence2.hs:9:12: warning: [-Wincoherence (in -Wdefault)]
     • Explicit dictionary application to: ‘Ord a’
       is not allowed because of possible incoherence:
         Through an ancestor: ‘Eq a’ occurs in the context
-    • In the expression: foo dict
-      In an equation for ‘bar’: bar dict = foo dict
+    • In the expression: foo ((dict :: Ord a))
+      In an equation for ‘bar’: bar dict = foo ((dict :: Ord a))
 
 <no location info>: error: 
 Failing due to -Werror.

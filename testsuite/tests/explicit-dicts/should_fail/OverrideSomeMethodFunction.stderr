@@ -10,10 +10,10 @@ OverrideSomeMethodFunction.hs:13:8: warning: [-Wincoherence (in -Wdefault)]
     • Explicit dictionary application to: ‘SomeClass a’
       is not allowed because of possible incoherence:
         There is a global instance for ‘SomeClass a’
-    • In the expression: f notDict True
+    • In the expression: f ((notDict :: SomeClass a)) True
       In an equation for ‘test’:
           test
-            = f notDict True
+            = f ((notDict :: SomeClass a)) True
             where
                 notDict = SomeClass.Dict not
 

@@ -3,5 +3,5 @@ WrongDictType.hs:14:6: error:
     • Couldn't match expected type ‘Int -> Eq.Dict Int’
                   with actual type ‘Eq.Dict a0’
     • TODOT tcDictAnnotation
-      In the expression: nub eqModulo
-      In an equation for ‘f1’: f1 = nub eqModulo
+      In the expression: nub ((eqModulo :: Eq a))
+      In an equation for ‘f1’: f1 = nub ((eqModulo :: Eq a))
