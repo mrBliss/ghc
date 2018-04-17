@@ -1294,6 +1294,10 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            ; traceTc "mb_ann_ty" (ppr mb_ann_ty)
            ; traceTc "dict_ty" (ppr dict_ty)
 
+           -- Zonk the type of the dictionary because we will be taking it
+           -- apart later on.
+           ; dict_ty <- zonkTcType dict_ty
+
            -- Check that the type is known of the function to which the
            -- dictionary is passed.
            ; when (isMetaTyVarTy fun_ty) $ -- TODOT proper way to check this?
@@ -1344,10 +1348,6 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            -- Unify the constraint C (after replacing C with C.Dict) with the
            -- dictionary so that the arguments are unified.
            ; _ <- unifyType noThing (replaceClassWithDict matched') dict_ty
-           -- Zonk dict_ty so that the result of the unification above can be
-           -- observed.
-           ; dict_ty <- zonkTcType dict_ty
-           ; let (dict_tycon, dict_args) = splitTyConApp dict_ty
 
            -- The constraint corresponding to the passed dictionary might not
            -- be the first one in the context. So use a subtype check to
@@ -1361,7 +1361,8 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
                   tcSubType_NC ctxt original_order_ty matched_in_front_ty
 
            -- Make a new evidence binding for the dictionary
-           ; let class_ty = replaceDictWithClass dict_ty
+           ; let (dict_tycon, dict_args) = splitTyConApp dict_ty
+                 class_ty = replaceDictWithClass dict_ty
                  coercion = mkTcUnbranchedAxInstCo (dictTyConCo dict_tycon)
                                                    dict_args []
                  ev_term = EvCast (EvDictionary (unLoc dict')) coercion
