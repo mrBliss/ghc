@@ -1,0 +1,9 @@
+
+MultipleDictsWithSameTyVar.hs:10:29: error:
+    • Constraint ‘Show a’ not found in:
+        Show Bool => Bool -> Bool
+    • In the expression:
+        f ((eqBoolDict :: Eq a)) ((showBoolDict :: Show a))
+      In an equation for ‘g’:
+          g eqBoolDict showBoolDict
+            = f ((eqBoolDict :: Eq a)) ((showBoolDict :: Show a))

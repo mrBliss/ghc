@@ -5,6 +5,7 @@ test('Incoherence2', normal, compile_fail, ['-XDictionaryApplications -Werror=in
 test('Incoherence3', normal, compile_fail, ['-XDictionaryApplications -Werror=incoherence'])
 test('Incoherence4', normal, compile_fail, ['-XDictionaryApplications -Werror=incoherence'])
 test('Incoherence5', normal, compile_fail, ['-XDictionaryApplications -Werror=incoherence'])
+test('MultipleDictsWithSameTyVar', normal, compile_fail, ['-XDictionaryApplications'])
 test('MultipleMatches', normal, compile_fail, ['-XDictionaryApplications'])
 test('NoTyVar', normal, compile_fail, ['-XDictionaryApplications'])
 test('NotATypeClassConstraint', normal, compile_fail, ['-XDictionaryApplications'])
