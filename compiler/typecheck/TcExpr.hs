@@ -1464,8 +1464,7 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
                  original_order_ty   = mkPhiTy theta' tau'
                  matched_in_front_ty = mkPhiTy matched_in_front' tau'
            ; reorder_cts_wrapper
-               <- addErrCtxt (text "TESTJE2") $ -- TODOT
-                  tcSubType_NC ctxt original_order_ty matched_in_front_ty
+               <- tcSubType_NC ctxt original_order_ty matched_in_front_ty
 
            -- Make a new evidence binding for the dictionary
            ; let (dict_tycon, dict_args) = splitTyConApp dict_ty
