@@ -2327,7 +2327,7 @@ dictTyConCo_maybe (AlgTyCon {algTcParent = DictTyCon _ _ co}) = Just co
 dictTyConCo_maybe _                                           = Nothing
 
 -- | Variant of 'dictTyConCo_maybe' that panics in case of @Nothing@.
-dictTyConCo :: TyCon -> CoAxiom Unbranched
+dictTyConCo :: HasCallStack => TyCon -> CoAxiom Unbranched
 dictTyConCo tc = case dictTyConCo_maybe tc of
   Just co -> co
   Nothing -> pprPanic "dictTyConCo" (ppr tc)
