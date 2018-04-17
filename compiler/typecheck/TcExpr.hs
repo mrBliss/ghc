@@ -1427,7 +1427,7 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
                  class_ty = replaceDictWithClass dict_ty
                  coercion = mkTcUnbranchedAxInstCo (dictTyConCo dict_tycon)
                                                    dict_args []
-                 ev_term = EvCast (EvDictionary (unLoc dict')) coercion
+                 ev_term = mkEvCast (EvDictionary (unLoc dict')) coercion
            ; ev_id        <- newEvVar class_ty
            ; ev_binds_var <- newTcEvBinds
            ; addTcEvBind ev_binds_var $ mkWantedEvBind ev_id ev_term
