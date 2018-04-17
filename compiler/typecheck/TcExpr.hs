@@ -1356,6 +1356,10 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            -- apart later on.
            ; dict_ty <- zonkTcType dict_ty
 
+           -- Zonk the type of the function to see the effects of another
+           -- dictionary application.
+           ; fun_ty <- zonkTcType fun_ty
+
            -- Check that the type is known of the function to which the
            -- dictionary is passed.
            ; when (isMetaTyVarTy fun_ty) $ -- TODOT proper way to check this?
