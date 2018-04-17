@@ -1,0 +1,5 @@
+
+WrongDictType2.hs:14:6: error:
+    • Not a dictionary type: Int -> Eq.Dict Int
+    • In the expression: nub eqModulo
+      In an equation for ‘f2’: f2 = nub eqModulo

@@ -1364,6 +1364,16 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            -- Check that the type-class constraint annotation is correct
            ; whenIsJust mb_ann_ty' $ tcDictAnnotation dict_ty
 
+           -- Check whether the dictionary has a dictionary type. This
+           -- certainly has to be checked when there is no type-class
+           -- constraint annotation.
+           ; let dict_ty_contains_dict_tycon =
+                   fromMaybe False $
+                   fmap isDictTyCon $
+                   tyConAppTyCon_maybe (dropForAlls dict_ty)
+           ; unless dict_ty_contains_dict_tycon $
+             failWithTc (text "Not a dictionary type:" <+> ppr dict_ty)
+
            ; let (tvs, theta, tau) = tcSplitSigmaTy fun_ty
                  in_scope          = mkInScopeSet (tyCoVarsOfType fun_ty)
                  empty_subst       = mkEmptyTCvSubst in_scope
@@ -1531,22 +1541,26 @@ tcDictAnnotation :: PredType  -- ^ The actual type of the dictionary
                  -> PredType  -- ^ The annotated type
                  -> TcM ()
 tcDictAnnotation dict_ty ann_ty
-  = do { case replaceClassWithDict_maybe ann_ty of
-           -- TODOT Invalid constraints like (a ~ b) and `(Show a, Eq a)` are
-           -- not detected by this
-           Nothing -> failWithTc $
-             text "Not a type-class constraint:" <+> ppr ann_ty
-           Just ann_dict_ty ->
-             do { traceTc "ann_dict_ty" (ppr ann_dict_ty)
-                ; let ctxt = SigmaCtxt -- TODOT
-                ; (_wrap, wanted) <-
-                    addErrCtxt (text "TODOT tcDictAnnotation") $
-                    captureConstraints $
-                    tcSubType_NC ctxt ann_dict_ty dict_ty
-                ; _ <- simplifyTop wanted -- TODOT
-                -- TODOT proper error message saying x is not an instantiation
-                -- of y
-                ; failIfErrsM } }
+  | Just ann_dict_ty <- replaceClassWithDict_maybe ann_ty
+  = unsetGOptM Opt_DeferTypeErrors $ unsetGOptM Opt_DeferTypedHoles $
+    -- Don't defer type errors here, because later during type-checking we
+    -- assume that we are dealing with an actual dictionary. For example, a
+    -- call to dictTyConCo would otherwise panic.
+    do { let ctxt = SigmaCtxt -- TODOT
+       ; (_wrap, wanted) <-
+           addErrCtxt (text "TODOT tcDictAnnotation") $
+           captureConstraints $
+           tcSubType_NC ctxt ann_dict_ty dict_ty
+       ; _ <- simplifyTop wanted
+         -- TODOT proper error message saying x is not an instantiation of y,
+         -- the expected and actual type in the error message should be swapped
+       ; failIfErrsM }
+  | otherwise
+  = failWithTc $ text "Not a type-class constraint:" <+> ppr ann_ty
+  -- TODOT Invalid constraints like (a ~ b) and `(Show a, Eq a)` are
+  -- not detected by this
+
+
 
 -- Check whether the Role Criterion holds for an explicit dictionary
 -- application. This criterion determines when it is "safe" to violate the
