@@ -1093,6 +1093,9 @@ type OutputableX p = -- See Note [OutputableX]
   , Outputable (XAppTypeE p)
   , Outputable (XAppTypeE GhcRn)
 
+  , Outputable (XAppDict p)
+  , Outputable (XAppDict GhcRn)
+
   , Outputable (XViaStrategy p)
   , Outputable (XViaStrategy GhcRn)
 

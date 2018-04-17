@@ -2,5 +2,5 @@
 MultipleMatches.hs:11:5: error:
     • More than one constraint matches ‘Eq a’ in:
         forall a. (Eq a, Eq a) => a -> String
-    • In the expression: f neverEq
-      In an equation for ‘g’: g = f neverEq
+    • In the expression: f ((neverEq :: Eq a))
+      In an equation for ‘g’: g = f ((neverEq :: Eq a))

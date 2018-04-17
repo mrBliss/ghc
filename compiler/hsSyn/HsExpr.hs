@@ -1165,23 +1165,32 @@ ppr_expr (HsArrForm _ op _ args)
 ppr_expr (HsRecFld _ f) = ppr f
 ppr_expr (XExpr x) = ppr x
 
+data HsPprArg p
+  = HsPprExprArg (LHsExpr (GhcPass p))
+  | HsPprTypeArg (XAppTypeE (GhcPass p))
+  | HsPprDictArg (LHsExpr (GhcPass p)) (Maybe (XAppDict (GhcPass p)))
+
 ppr_apps :: (OutputableBndrId (GhcPass p))
          => HsExpr (GhcPass p)
-         -> [Either (LHsExpr (GhcPass p)) (XAppTypeE (GhcPass p))]
+         -> [HsPprArg p]
          -> SDoc
 ppr_apps (HsApp _ (L _ fun) arg)        args
-  = ppr_apps fun (Left arg : args)
+  = ppr_apps fun (HsPprExprArg arg : args)
 ppr_apps (HsAppType arg (L _ fun))    args
-  = ppr_apps fun (Right arg : args)
-ppr_apps (HsAppDict (L _ fun) dict _mb_ty) args -- TODOT
-  = ppr_apps fun (Left dict : args)
+  = ppr_apps fun (HsPprTypeArg arg : args)
+ppr_apps (HsAppDict (L _ fun) dict mb_ty) args
+  = ppr_apps fun (HsPprDictArg dict mb_ty : args)
 ppr_apps fun args = hang (ppr_expr fun) 2 (sep (map pp args))
   where
-    pp (Left arg)                             = ppr arg
+    pp (HsPprExprArg arg) = ppr arg
     -- pp (Right (LHsWcTypeX (HsWC { hswc_body = L _ arg })))
     --   = char '@' <> pprHsType arg
-    pp (Right arg)
+    pp (HsPprTypeArg arg)
       = char '@' <> ppr arg
+    pp (HsPprDictArg dict mb_ann_ty)
+      = parens $ parens $ case mb_ann_ty of
+          Nothing -> ppr dict
+          Just ann_ty -> ppr dict <+> dcolon <+> ppr ann_ty
 
 pprExternalSrcLoc :: (StringLiteral,(Int,Int),(Int,Int)) -> SDoc
 pprExternalSrcLoc (StringLiteral _ src,(n1,n2),(n3,n4))
