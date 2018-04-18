@@ -325,10 +325,11 @@ buildClass class_tycon_name dict_tycon_name binders roles fds Nothing
               co          = mkDictToClassCoAxiom co_tycon_name
                                                  (classDictTyCon rec_clas)
                                                  univ_tvs roles co_rhs_ty
+              dict_roles  = map (`max` Representational) roles
               dict_tycon = mkAlgTyCon dict_tycon_name binders liftedTypeKind
-                                        roles Nothing [] AbstractTyCon
-                                        (DictTyCon rec_clas dict_tc_rep_nm co)
-                                        False
+                                      dict_roles Nothing [] AbstractTyCon
+                                      (DictTyCon rec_clas dict_tc_rep_nm co)
+                                      False
               result = mkAbstractClass class_tycon_name univ_tvs fds
                                        class_tycon dict_tycon
         ; traceIf (text "buildClass" <+> ppr class_tycon <+> ppr dict_tycon)
@@ -423,8 +424,9 @@ buildClass class_tycon_name dict_tycon_name binders roles fds
           -- TODOT proper name?
         ; co_tycon_name <- newImplicitBinder dict_tycon_name mkDictClassCoOcc
         ; let co_rhs_ty = mkTyConApp (classTyCon rec_clas) (mkTyVarTys univ_tvs)
+              dict_roles = map (`max` Representational) roles
               co = mkDictToClassCoAxiom co_tycon_name (classDictTyCon rec_clas)
-                                        univ_tvs roles co_rhs_ty
+                                        univ_tvs dict_roles co_rhs_ty
 
 
         ; class_tc_rep_nm <- newTyConRepName class_tycon_name
@@ -441,7 +443,7 @@ buildClass class_tycon_name dict_tycon_name binders roles fds
                 -- newtype like a synonym, but that will lead to an infinite
                 -- type]
               ; dict_tycon = mkAlgTyCon dict_tycon_name binders liftedTypeKind
-                                        roles Nothing [] dict_rhs
+                                        dict_roles Nothing [] dict_rhs
                                         (DictTyCon rec_clas dict_tc_rep_nm co)
                                         False
 
