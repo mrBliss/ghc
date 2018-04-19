@@ -2597,32 +2597,35 @@ sizeTypes tys = sum (map sizeType tys)
 -- TODOT Document that this doesn't belong with inferRoles in TcTyDecls,
 -- because this function is used after the roles have already been inferred.
 getTyVarRolesIn :: [TyVar] -> Type -> [Role]
-getTyVarRolesIn tvs ty = map (lookupVarEnv_NF end_env) tvs
+getTyVarRolesIn tvs in_ty = map (get_role tyvar_to_role) tvs
   where
-    init_env = mkVarEnv (zip tvs (repeat Phantom))
-    end_env = go ty init_env
-    max_role r1 r2 | ltRole r1 r2 = r1
-                   | otherwise    = r2
-    try_update_role :: Type -> Role -> TyVarEnv Role -> TyVarEnv Role
-    try_update_role ty role env
-      | Just tv <- getTyVar_maybe ty
-      = modifyVarEnv (`max_role` role) env tv -- If it's not in the env, it's
-      | otherwise                             -- not updated
-      = env
+    tyvar_to_role :: TyVarEnv Role
+    tyvar_to_role = go in_ty Phantom (mkVarEnv (zip tvs (repeat Phantom)))
 
-    go :: Type -> TyVarEnv Role -> TyVarEnv Role
-    go (TyConApp tc args) env
-      = let env' = foldr (uncurry try_update_role) env
-                         (zip args (tyConRoles tc))
-        in foldr go env' args
-    go (FunTy t1 t2) env
-      = try_update_role t1 Representational $
-        try_update_role t2 Representational $
-        go t2 (go t1 env)
-    go (ForAllTy _ ty) env = go ty env
-    go (AppTy t1 t2) env = go t2 (go t1 env)
-    -- Nothing special
-    go (TyVarTy {}) env = env
-    go (LitTy {}) env = env
-    go (CastTy {}) env = env
-    go (CoercionTy {}) env = env
+    -- Our definition of max_role is the strictest role. From most to least
+    -- strict: Nominal > Representation > Phantom
+    max_role :: Role -> Role -> Role
+    max_role r1 r2 = min r1 r2
+
+    get_role :: TyVarEnv Role -> TyVar -> Role
+    get_role env tv = lookupVarEnv_NF env tv
+
+    go :: Type -> Role -> TyVarEnv Role -> TyVarEnv Role
+    go (TyVarTy tv) cur_role env = modifyVarEnv (`max_role` cur_role) env tv
+    go (TyConApp tc args) cur_role env
+      = foldr (\(arg, role) -> go arg (cur_role `max_role` role))
+              env (zip args (tyConRoles tc))
+    go (FunTy ty1 ty2) cur_role env
+      = go ty2 (cur_role `max_role` Representational)
+      $ go ty1 (cur_role `max_role` Representational) env
+
+    -- ty1 can only be another AppTy or TyVarTy, so ty2 is the argument of an
+    -- application of type variable, e.g. `f arg`, `f arg1 arg2`, etc. As `f`
+    -- could be a type family, this means ty2 is in a Nominal position.
+    go (AppTy ty1 ty2) cur_role env
+      = go ty2 Nominal $ go ty1 cur_role env
+    -- Nothing special for these:
+    go (ForAllTy _ ty) cur_role env = go ty cur_role env
+    go (LitTy {}) _ env = env
+    go (CastTy {}) _ env = env
+    go (CoercionTy {}) _ env = env

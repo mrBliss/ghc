@@ -1331,10 +1331,11 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            ; (theta_before, matched, theta_after)
                <- extractMatchingConstraint mb_ann_ty' dict_ty theta fun_ty
 
-           ; tcCheckDictAppRoleCriterion matched tau
            ; dflags <- getDynFlags
            ; when (wopt Opt_WarnIncoherence dflags) $
                tcCheckDictAppCoherence tvs (theta_before ++ theta_after) matched
+           ; tcCheckDictAppRoleCriterion matched tau
+
 
            -- Instantiate the type variables in the type
            ; (subst, tvs') <- mapAccumLM newMetaTyVarX empty_subst tvs
@@ -1516,13 +1517,13 @@ tcDictAnnotation dict_ty ann_ty
 -- a role <= representational in tau
 tcCheckDictAppRoleCriterion :: TcPredType -> TcTauType -> TcM ()
 tcCheckDictAppRoleCriterion matched tau
-  = do { let (_, tc_args) = splitTyConApp matched
-             tc_tvs       = mapMaybe getTyVar_maybe tc_args
-             tc_tv_roles  = getTyVarRolesIn tc_tvs tau
-       ; traceTc "TC_TV_ROLES" (ppr (zip tc_tvs tc_tv_roles))
-       ; unless (any (Nominal `ltRole`) tc_tv_roles) $
+  = do { let args = tyConAppArgs matched
+             tvs  = mapMaybe getTyVar_maybe args
+             tv_roles = getTyVarRolesIn tvs tau
+       ; traceTc "ROLES" (ppr (zip tvs tv_roles))
+       ; unless (any (Nominal `ltRole`) tv_roles) $
          -- TODOT better error message stating the role
-         failWithTc (text "Explicit dictionary application not allowed") }
+         addErrTc (text "Explicit dictionary application not allowed") }
 
 -- Check for whether an explicit dictionary application is incoherent. Signal
 -- an error if it is the case.
