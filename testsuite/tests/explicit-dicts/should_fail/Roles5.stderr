@@ -1,0 +1,10 @@
+
+Roles5.hs:14:6: error:
+    • Explicit dictionary application not allowed
+    • In the expression:
+        (undefined :: Ord Int => Int -> Set Int -> Set Int)
+          ((reverseOrd @Int :: Ord Int))
+      In an equation for ‘f5’:
+          f5
+            = (undefined :: Ord Int => Int -> Set Int -> Set Int)
+                ((reverseOrd @Int :: Ord Int))
