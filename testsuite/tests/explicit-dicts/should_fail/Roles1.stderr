@@ -1,0 +1,10 @@
+
+Roles1.hs:13:6: error:
+    • Explicit dictionary application not allowed
+    • In the expression:
+        (undefined :: Ord a => a -> f a -> f a)
+          ((reverseOrd @Int :: Ord a))
+      In an equation for ‘f1’:
+          f1
+            = (undefined :: Ord a => a -> f a -> f a)
+                ((reverseOrd @Int :: Ord a))
