@@ -7,6 +7,7 @@ test('Incoherence4', normal, compile_fail, ['-XDictionaryApplications -Werror=in
 test('Incoherence5', normal, compile_fail, ['-XDictionaryApplications -Werror=incoherence'])
 test('MultipleDictsWithSameTyVar', normal, compile_fail, ['-XDictionaryApplications'])
 test('MultipleMatches', normal, compile_fail, ['-XDictionaryApplications'])
+test('MultiParamRoles', normal, compile_fail, ['-XDictionaryApplications'])
 test('NoTyVar', normal, compile_fail, ['-XDictionaryApplications -Werror=incoherence'])
 test('NotATypeClassConstraint', normal, compile_fail, ['-XDictionaryApplications'])
 test('OverrideSomeMethodFunction', extra_files(['SomeClass.hs', 'SomeMethodFunction.hs', 'SomeClassInstance.hs']), multimod_compile_fail, ['OverrideSomeMethodFunction', '-v0 -XDictionaryApplications -Werror=incoherence'])
