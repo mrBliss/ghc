@@ -1616,15 +1616,15 @@ tcDictAnnotation dict_ty ann_ty
 -- application. This criterion determines when it is "safe" to violate the
 -- Global Uniqueness of Instances property.
 --
--- It is safe when at least one type variable of the type class arguments has
--- a role <= representational in tau
+-- It is safe when all type class arguments are type variables that have a
+-- role <= representational in tau
 tcCheckDictAppRoleCriterion :: TcPredType -> TcTauType -> TcM ()
 tcCheckDictAppRoleCriterion matched tau
   = do { let args = tyConAppArgs matched
              tvs  = mapMaybe getTyVar_maybe args
              tv_roles = getTyVarRolesIn tvs tau
        ; traceTc "ROLES" (ppr (zip tvs tv_roles))
-       ; unless (any (Nominal `ltRole`) tv_roles) $
+       ; unless (all (Nominal `ltRole`) tv_roles) $
          -- TODOT better error message stating the role
          addErrTc (text "Explicit dictionary application not allowed") }
 

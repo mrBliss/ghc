@@ -1,0 +1,8 @@
+
+MultiParamRoles.hs:26:5: error:
+    • Explicit dictionary application not allowed
+    • In the expression: f ((dict))
+      In an equation for ‘g’:
+          g = f ((dict))
+            where
+                dict = Convert.Dict {parent1 = reverseOrd, convert = undefined}

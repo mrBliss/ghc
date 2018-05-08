@@ -1,6 +1,9 @@
 
-NoTyVar.hs:13:13: error:
-    • Explicit dictionary application not allowed
+NoTyVar.hs:13:13: error: [-Wincoherence (in -Wdefault), -Werror=incoherence]
+    • Explicit dictionary application to: ‘Ord Int’
+      is not allowed because of possible incoherence:
+        There is a global instance for ‘Ord Int’
+        Through an ancestor: There is a global instance for ‘Eq Int’
     • In the expression: maxInt ((absOrd :: Ord Int))
       In an equation for ‘maxAbsInt’:
           maxAbsInt = maxInt ((absOrd :: Ord Int))
