@@ -1,6 +1,8 @@
 
 Roles5.hs:14:6: error:
-    • Explicit dictionary application not allowed
+    • Explicit dictionary application to: ‘Ord Int’
+      is not allowed because the instance incoherence check
+      requires type-variable arguments
     • In the expression:
         (undefined :: Ord Int => Int -> Set Int -> Set Int)
           ((reverseOrd @Int :: Ord Int))

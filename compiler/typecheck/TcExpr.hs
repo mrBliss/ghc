@@ -53,7 +53,6 @@ import Name
 import NameEnv
 import NameSet
 import RdrName
-import Coercion( ltRole )
 import TyCon
 import Type
 import TcEvidence
@@ -1520,10 +1519,23 @@ tcCheckDictAppRoleCriterion matched tau
   = do { let args = tyConAppArgs matched
              tvs  = mapMaybe getTyVar_maybe args
              tv_roles = getTyVarRolesIn tvs tau
-       ; traceTc "ROLES" (ppr (zip tvs tv_roles))
-       ; unless (all (Nominal `ltRole`) tv_roles) $
-         -- TODOT better error message stating the role
-         addErrTc (text "Explicit dictionary application not allowed") }
+             tvs_with_roles = zip tvs tv_roles
+       ; traceTc "ROLES" (ppr tvs_with_roles)
+       ; let nominals = [tv | (tv, Nominal) <- tvs_with_roles]
+       ; case nominals of
+           _ | null tvs -> addErrTc $ vcat
+             [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
+             , text "is not allowed because the instance incoherence check"
+             , text "requires type-variable arguments" ]
+           [] -> return ()
+           _ -> addErrTc $ vcat
+             [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
+             , text "is not allowed because of instance incoherence:"
+             , text "In" <+> quotes (ppr tau)
+             , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
+                               text "has role Nominal"
+                             | tv <- nominals]] }
+
 
 -- Check for whether an explicit dictionary application is incoherent. Signal
 -- an error if it is the case.
