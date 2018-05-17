@@ -1,6 +1,9 @@
 
 RoleNom.hs:14:15: error:
-    • Explicit dictionary application not allowed
+    • Explicit dictionary application to: ‘Class a’
+      is not allowed because of instance incoherence:
+      In ‘a -> Box a’
+        Type variable ‘a’ has role Nominal
     • In the expression: method ((inst :: Class a))
       In an equation for ‘explicitApp’:
           explicitApp = method ((inst :: Class a))
