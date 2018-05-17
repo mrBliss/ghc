@@ -1,9 +1,8 @@
 
-Roles6.hs:10:6: error: [-Wincoherence (in -Wdefault), -Werror=incoherence]
+Roles6.hs:10:6: error:
     • Explicit dictionary application to: ‘Ord Int’
-      is not allowed because of possible incoherence:
-        There is a global instance for ‘Ord Int’
-        Through an ancestor: There is a global instance for ‘Eq Int’
+      is not allowed because the instance incoherence check
+      requires type-variable arguments
     • In the expression:
         (undefined :: Ord Int => Int -> [Int] -> [Int])
           ((reverseOrd @Int :: Ord Int))
