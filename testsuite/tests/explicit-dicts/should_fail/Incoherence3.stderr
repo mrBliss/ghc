@@ -2,7 +2,7 @@
 Incoherence3.hs:10:12: error:
     • Explicit dictionary application to: ‘Eq a’
       is not allowed because the instance incoherence check
-      requires that all other constraints are type class constraints,
+      requires that its type arguments do not occur in an equality,
       found: ‘a ~ b’
     • In the expression: foo ((dict :: Eq a))
       In an equation for ‘bar’: bar dict = foo ((dict :: Eq a))
