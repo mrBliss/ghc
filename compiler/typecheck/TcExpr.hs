@@ -1391,7 +1391,7 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            ; dflags <- getDynFlags
            ; when (wopt Opt_WarnIncoherence dflags) $
                tcCheckDictAppCoherence tvs (theta_before ++ theta_after) matched
-           ; tcCheckDictAppRoleCriterion matched tau
+           ; tcCheckDictAppRoleCriterion matched tau (theta_before ++ theta_after)
 
 
            -- Instantiate the type variables in the type
@@ -1571,9 +1571,12 @@ tcDictAnnotation dict_ty ann_ty
 -- Global Uniqueness of Instances property.
 --
 -- It is safe when all type class arguments are type variables that have a
--- role <= representational in tau
-tcCheckDictAppRoleCriterion :: TcPredType -> TcTauType -> TcM ()
-tcCheckDictAppRoleCriterion matched tau
+-- role <= representational in tau. The other constraints in the context may
+-- only be type class constraints.
+--
+-- TODOT check role in dictionary type itself.
+tcCheckDictAppRoleCriterion :: TcPredType -> TcTauType -> TcThetaType -> TcM ()
+tcCheckDictAppRoleCriterion matched tau context
   = do { let args = tyConAppArgs matched
              tvs  = mapMaybe getTyVar_maybe args
              tv_roles = getTyVarRolesIn tvs tau
@@ -1581,6 +1584,11 @@ tcCheckDictAppRoleCriterion matched tau
        ; traceTc "ROLES" (ppr tvs_with_roles)
        ; let nominals = [tv | (tv, Nominal) <- tvs_with_roles]
        ; case nominals of
+           _ | Just pred <- find isNoTypeClassPred context -> addErrTc $ vcat
+             [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
+             , text "is not allowed because the instance incoherence check"
+             , text "requires that all other constraints are type class constraints,"
+             , text "found:" <+> quotes (ppr pred) ]
            _ | null tvs -> addErrTc $ vcat
              [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
              , text "is not allowed because the instance incoherence check"
@@ -1593,7 +1601,14 @@ tcCheckDictAppRoleCriterion matched tau
              , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
                                text "has role Nominal"
                              | tv <- nominals]] }
-
+  where
+    -- TODOT more robust implementation than this
+    isNoTypeClassPred pred
+      | Just (tc, _) <- splitTyConApp_maybe pred
+      , tc `hasKey` eqTyConKey
+      = True
+      | otherwise
+      = False
 
 -- Check for whether an explicit dictionary application is incoherent. Signal
 -- an error if it is the case.
