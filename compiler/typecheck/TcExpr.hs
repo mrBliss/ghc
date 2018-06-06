@@ -1584,10 +1584,11 @@ tcCheckDictAppRoleCriterion matched tau context
        ; traceTc "ROLES" (ppr tvs_with_roles)
        ; let nominals = [tv | (tv, Nominal) <- tvs_with_roles]
        ; case nominals of
-           _ | Just pred <- find isNoTypeClassPred context -> addErrTc $ vcat
+           _ | Just pred <- find (mentioned_in_equality tvs) context_with_sc
+             -> addErrTc $ vcat
              [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
              , text "is not allowed because the instance incoherence check"
-             , text "requires that all other constraints are type class constraints,"
+             , text "requires that its type arguments do not occur in an equality,"
              , text "found:" <+> quotes (ppr pred) ]
            _ | null tvs -> addErrTc $ vcat
              [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
@@ -1602,11 +1603,12 @@ tcCheckDictAppRoleCriterion matched tau context
                                text "has role Nominal"
                              | tv <- nominals]] }
   where
-    -- TODOT more robust implementation than this
-    isNoTypeClassPred pred
-      | Just (tc, _) <- splitTyConApp_maybe pred
-      , tc `hasKey` eqTyConKey
-      = True
+    context_with_sc = foldMap transSuperClasses context
+    mentioned_in_equality tvs pred
+      | Just (tc, tys) <- splitTyConApp_maybe pred
+      , tc `hasKey` eqTyConKey || tc `hasKey` heqTyConKey ||
+        tc `hasKey` eqPrimTyConKey
+      = any (`elem` tvs) (mapMaybe getTyVar_maybe tys)
       | otherwise
       = False
 
