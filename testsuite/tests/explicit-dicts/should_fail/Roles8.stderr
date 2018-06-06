@@ -1,0 +1,9 @@
+
+Roles8.hs:21:6: error:
+    • Explicit dictionary application to: ‘Ord a’
+      is not allowed because the instance incoherence check
+      requires that all other constraints are type class constraints,
+      found: ‘a ~ b’
+    • In the expression: evilInsert ((reverseOrd @Int :: Ord a))
+      In an equation for ‘f8’:
+          f8 = evilInsert ((reverseOrd @Int :: Ord a))
