@@ -1354,14 +1354,10 @@ tcArgs fun orig_fun_ty fun_orig orig_args herald
            ; _ <- unifyType noThing (replaceClassWithDict matched') dict_ty
 
            -- The constraint corresponding to the passed dictionary might not
-           -- be the first one in the context. So use a subtype check to
-           -- create a wrapper that rearranges the constraints for us such
-           -- that the constraint of the passed dictionary comes first.
-           ; let ctxt = SigmaCtxt -- TODOT
-                 original_order_ty   = mkPhiTy theta' tau'
-                 matched_in_front_ty = mkPhiTy matched_in_front' tau'
-           ; reorder_cts_wrapper
-               <- tcSubType_NC ctxt original_order_ty matched_in_front_ty
+           -- be the first one in the context. So create a wrapper that
+           -- reorders the constraint such that the constraint of the passed
+           -- dictionary comes first.
+           ; reorder_cts_wrapper <- reorderConstraints theta' matched_in_front'
 
            -- Make a new evidence binding for the dictionary
            ; let (dict_tycon, dict_args) = splitTyConApp dict_ty
@@ -1629,6 +1625,44 @@ tcCheckDictAppCoherence skol_tvs remainder constraint
          [ text "Explicit dictionary application to:" <+> quotes (ppr constraint)
          , text "is not allowed because of possible incoherence:"
          , nest 2 $ vcat (map ppr causes) ] } }
+
+
+-- | Create a wrapper to reorder the first list of constraints to match the
+-- order of the second list of constraints. This is used for explicit
+-- dictionary applications, as it is possible that the constraint in question
+-- does not occur first in the context.
+--
+-- Both list must contain the same constraints, but the order may differ.
+-- Within the lists, each constraint must be unique. This should be taken care
+-- of by extractMatchingConstraint.
+--
+-- For example, given the following arguments:
+--   (Show a, Num b, Eq c)
+--   (Eq c, Show a, Num b)
+-- The following wrapper is produced:
+--   \dEq_c. \dShow_a. \dNum_b. [] dShow_a dNum_b dEq_c
+--
+-- Note that we do not use the subtype check machinery based on the constraint
+-- solver (tcSubType). This is because when multiple dictionary with the same
+-- type class and instantiated type arguments are explicitly applied to one
+-- function, the constraint solver will see (due to unification) duplicate
+-- constraints and might pick the wrong dictionaries, see the TwoEqs test.
+reorderConstraints :: ThetaType -> ThetaType -> TcM HsWrapper
+reorderConstraints original_order_cts new_order_cts
+  | and $ zipWith syntacticEqPredType original_order_cts new_order_cts
+  = return WpHole  -- No reordering necessary when they are in the same order
+  | otherwise
+  = do { ev_vars <- newEvVars original_order_cts
+         -- We use a simple association list instead of a Set because we don't
+         -- have an Ord instance for syntactically equal predicate types.
+         -- Besides, the number of constraints will be reasonably small, so an
+         -- association list might even be faster than a Set (not
+         -- asymptotically, but because of the constant factors).
+       ; let ct_to_ev_var = zip original_order_cts ev_vars
+             get_ev_var = assocUsing syntacticEqPredType
+                          "get_ev_var: lists do not match" ct_to_ev_var
+             reordered_ev_vars = map get_ev_var new_order_cts
+       ; return $ mkWpLams reordered_ev_vars <.> mkWpEvVarApps ev_vars }
 
 ----------------
 tcArg :: LHsExpr Name                    -- The function (for error messages)
