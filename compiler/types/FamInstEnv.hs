@@ -705,7 +705,7 @@ mkNewTypeCoAxiom name tycon tvs roles rhs_ty
     branch = mkCoAxBranch tvs [] (mkTyVarTys tvs) rhs_ty
                           roles (getSrcSpan name)
 
--- | Create a coercion constructor (axiom) to convert type-class dictionary
+-- | Create a coercion constructor (axiom) to convert a type-class dictionary
 -- data type to the corresponding type-class constraint.
 --
 -- For example, to convert C.Dict a :: * to C a :: Constraint
