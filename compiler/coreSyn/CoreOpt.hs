@@ -41,7 +41,8 @@ import Class       ( classTyCon )
 import Type     hiding ( substTy, extendTvSubst, extendCvSubst, extendTvSubstList
                        , isInScope, substTyVarBndr, cloneTyVarBndr )
 import Coercion hiding ( substCo, substCoVarBndr )
-import TyCon        ( tyConArity, dictTyConClass_maybe, tyConSingleDataCon_maybe )
+import TyCon        ( tyConArity, dictTyConClass_maybe, dictTyConCo_maybe )
+import TyCoRep      ( Coercion(TyConAppCo, NthCo) )
 import TysWiredIn
 import PrelNames
 import BasicTypes
@@ -1038,17 +1039,8 @@ pushCoDataCon dc dc_args co
   , let (univ_ty_args, rest_args) = splitAtList (dataConUnivTyVars dc) dc_args
   = Just (dc, map exprToType univ_ty_args, rest_args)
 
-  -- Replace a <Class>.Dict datacon by the corresponding C:<Class> datacon so
-  -- that it gets optimised like regular dictionaries.
-  -- TODOT best place and way to do this?
-  | Just dict_tc <- isDictCo_maybe co
-  , Just clas <- dictTyConClass_maybe dict_tc
-  , Just class_dc <- tyConSingleDataCon_maybe (classTyCon clas)
-  , let (univ_ty_args, rest_args) = splitAtList (dataConUnivTyVars dc) dc_args
-  = Just (class_dc, map exprToType univ_ty_args, rest_args)
-
   | Just (to_tc, to_tc_arg_tys) <- splitTyConApp_maybe to_ty
-  , to_tc == dataConTyCon dc
+  , to_tc == dataConTyCon dc || Just to_tc == mb_dict_tycon
         -- These two tests can fail; we might see
         --      (C x y) `cast` (g :: T a ~ S [a]),
         -- where S is a type function.  In fact, exprIsConApp
@@ -1073,9 +1065,22 @@ pushCoDataCon dc dc_args co
                               dc_ex_tyvars
                               (map exprToType ex_args)
 
+        -- Special case the casting of an explicit dictionary to a type class instance:
+        --   (Ord.Dict eqDict compare ...) `cast` F:Ord.Dict[0] <a>_R
+        -- where F:Ord.Dict[0] <a>_R :: (Ord.Dict a :: *) ~ (Ord a :: Constraint)
+        -- The casts of the superclasses, this case eqDict, should be adapted:
+        --   eqDict `cast` F:Eq.Dict[0] <a>_R
+        -- where F:Eq.Dict[0] <a>_R :: (Eq.Dict a :: *) ~ (Eq a :: Constraint)
+        -- So we have to obtain the right coercion and apply it.
+        fix_superclass_coercion (TyConAppCo role tc [NthCo _ _])
+          | Just dict_co <- dictTyConCo_maybe tc
+          = mkUnbranchedAxInstCo role dict_co to_tc_arg_tys []
+        fix_superclass_coercion co = co
+        -- TODOT robust enough?
+
           -- Cast the value arguments (which include dictionaries)
         new_val_args = zipWith cast_arg arg_tys val_args
-        cast_arg arg_ty arg = mkCast arg (psi_subst arg_ty)
+        cast_arg arg_ty arg = mkCast arg $ fix_superclass_coercion $ psi_subst arg_ty
 
         to_ex_args = map Type to_ex_arg_tys
 
@@ -1092,6 +1097,11 @@ pushCoDataCon dc dc_args co
 
   where
     Pair from_ty to_ty = coercionKind co
+
+    mb_dict_tycon
+      = do { dict_tc <- isDictCo_maybe co
+           ; clas <- dictTyConClass_maybe dict_tc
+           ; return $ classTyCon clas }
 
 collectBindersPushingCo :: CoreExpr -> ([Var], CoreExpr)
 -- Collect lambda binders, pushing coercions inside if possible
