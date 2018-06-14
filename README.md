@@ -1,3 +1,24 @@
+Coherent Explicit Dictionary Application for Haskell
+====================================================
+
+This is the prototype implementation of the design described in the paper
+"Coherent Explicit Dictionary Application for Haskell", submitted to Haskell
+Symposium 2018.
+
+To build this branch, please see the instructions below.
+
+See the file `Sample.hs` for the full code shown in the paper. After compiling
+this branch, the sample code can be compiled and run by executing the
+following commands in the root directory of the repository:
+
+    $ TOP="$(pwd)"
+    $ cabal install --with-compiler="$TOP/inplace/bin/ghc-stage2" --package-db="$TOP/inplace/lib/package.conf.d" QuickCheck mtl
+    $ inplace/bin/ghc-stage2 -package QuickCheck -package mtl Sample.hs
+
+To start a GHCi session, add the `--interactive` flag to the last command.
+
+
+
 The Glasgow Haskell Compiler
 ============================
 
