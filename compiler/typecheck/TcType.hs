@@ -109,7 +109,7 @@ module TcType (
   anyRewritableTyVar,
 
   -- * Getting the roles of type variables in a type
-  getTyVarRolesIn,
+  getTyVarRolesInTy, getTyVarRolesInTys,
 
   ---------------------------------
   -- Foreign import and export
@@ -2724,8 +2724,15 @@ isNextArgVisible ty
 
 -- TODOT Document that this doesn't belong with inferRoles in TcTyDecls,
 -- because this function is used after the roles have already been inferred.
-getTyVarRolesIn :: [TyVar] -> Type -> [Role]
-getTyVarRolesIn tvs in_ty = map (get_role tyvar_to_role) tvs
+
+getTyVarRolesInTys :: [TyVar] -> [Type] -> [Role]
+getTyVarRolesInTys tvs [] = map (const Phantom) tvs
+getTyVarRolesInTys tvs (in_ty:in_tys) =
+  -- Quick and dirty solution: just make a Type from [Type]
+  getTyVarRolesInTy tvs (mkFunTys in_tys in_ty)
+
+getTyVarRolesInTy :: [TyVar] -> Type -> [Role]
+getTyVarRolesInTy tvs in_ty = map (get_role tyvar_to_role) tvs
   where
     tyvar_to_role :: TyVarEnv Role
     tyvar_to_role = go in_ty Phantom (mkVarEnv (zip tvs (repeat Phantom)))
