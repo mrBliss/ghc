@@ -2,7 +2,7 @@
 Roles4.hs:13:6: error:
     • Explicit dictionary application to: ‘Ord a’
       is not allowed because of instance incoherence:
-      In ‘f a -> Set (f a) -> Set (f a)’
+      In the function type ‘f a -> Set (f a) -> Set (f a)’
         Type variable ‘a’ has role Nominal
     • In the expression:
         (undefined :: Ord a => f a -> Set (f a) -> Set (f a))

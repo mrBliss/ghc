@@ -1,0 +1,8 @@
+
+Roles10.hs:17:7: error:
+    • Explicit dictionary application to: ‘SetInsertable a’
+      is not allowed because of instance incoherence:
+      In the dictionary type ‘SetInsertable.Dict a’
+        Type variable ‘a’ has role Nominal
+    • In the expression: foo ((reverseSetInsertable))
+      In an equation for ‘f10’: f10 = foo ((reverseSetInsertable))

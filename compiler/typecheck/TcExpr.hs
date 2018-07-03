@@ -1509,37 +1509,48 @@ tcDictAnnotation dict_ty ann_ty
 -- Global Uniqueness of Instances property.
 --
 -- It is safe when all type class arguments are type variables that have a
--- role <= representational in tau. The other constraints in the context may
--- only be type class constraints.
---
--- TODOT check role in dictionary type itself.
-tcCheckDictAppRoleCriterion :: TcPredType -> TcTauType -> TcThetaType -> TcM ()
+-- role <= representational in tau and in the dictionary type itself. The
+-- other constraints in the context, including their superclasses may only be
+-- type class constraints (not equality constraints).
+tcCheckDictAppRoleCriterion
+  :: TcPredType   -- ^ The constraint to which a dictionary is passed
+  -> TcTauType    -- ^ The monotype (tau) of the function
+  -> TcThetaType  -- ^ The remainder of the context
+  -> TcM ()
 tcCheckDictAppRoleCriterion matched tau context
   = do { let args = tyConAppArgs matched
              tvs  = mapMaybe getTyVar_maybe args
-             tv_roles = getTyVarRolesIn tvs tau
-             tvs_with_roles = zip tvs tv_roles
-       ; traceTc "ROLES" (ppr tvs_with_roles)
-       ; let nominals = [tv | (tv, Nominal) <- tvs_with_roles]
-       ; case nominals of
-           _ | Just pred <- find (mentioned_in_equality tvs) context_with_sc
-             -> addErrTc $ vcat
-             [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
-             , text "is not allowed because the instance incoherence check"
-             , text "requires that its type arguments do not occur in an equality,"
-             , text "found:" <+> quotes (ppr pred) ]
-           _ | null tvs -> addErrTc $ vcat
-             [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
-             , text "is not allowed because the instance incoherence check"
-             , text "requires type-variable arguments" ]
-           [] -> return ()
-           _ -> addErrTc $ vcat
-             [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
-             , text "is not allowed because of instance incoherence:"
-             , text "In" <+> quotes (ppr tau)
-             , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
-                               text "has role Nominal"
-                             | tv <- nominals]] }
+             dict = replaceClassWithDict matched
+             tvs_with_roles_in_tau  = zip tvs (getTyVarRolesIn tvs tau)
+             tvs_with_roles_in_dict = zip tvs (getTyVarRolesIn tvs dict)
+             nominals_in_tau  = [tv | (tv, Nominal) <- tvs_with_roles_in_tau]
+             nominals_in_dict = [tv | (tv, Nominal) <- tvs_with_roles_in_dict]
+             mb_equality = find (mentioned_in_equality tvs) context_with_sc
+       ; traceTc "Roles in tau"  (ppr tvs_with_roles_in_tau)
+       ; traceTc "Roles in dict" (ppr tvs_with_roles_in_dict)
+       ; whenIsJust mb_equality $ \equality -> addErrTc $ vcat
+         [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
+         , text "is not allowed because the instance incoherence check"
+         , text "requires that its type arguments do not occur in an equality,"
+         , text "found:" <+> quotes (ppr equality) ]
+       ; when (null tvs) $ addErrTc $ vcat
+         [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
+         , text "is not allowed because the instance incoherence check"
+         , text "requires type-variable arguments" ]
+       ; unless (null nominals_in_tau) $ addErrTc $ vcat
+         [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
+         , text "is not allowed because of instance incoherence:"
+         , text "In the function type" <+> quotes (ppr tau)
+         , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
+                           text "has role Nominal"
+                         | tv <- nominals_in_tau]]
+       ; unless (null nominals_in_dict) $ addErrTc $ vcat
+         [ text "Explicit dictionary application to:" <+> quotes (ppr matched)
+         , text "is not allowed because of instance incoherence:"
+         , text "In the dictionary type" <+> quotes (ppr dict)
+         , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
+                           text "has role Nominal"
+                         | tv <- nominals_in_dict]] }
   where
     context_with_sc = foldMap transSuperClasses context
     mentioned_in_equality tvs pred

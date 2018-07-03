@@ -2,7 +2,7 @@
 Roles1.hs:13:6: error:
     • Explicit dictionary application to: ‘Ord a’
       is not allowed because of instance incoherence:
-      In ‘a -> f a -> f a’
+      In the function type ‘a -> f a -> f a’
         Type variable ‘a’ has role Nominal
     • In the expression:
         (undefined :: Ord a => a -> f a -> f a)
