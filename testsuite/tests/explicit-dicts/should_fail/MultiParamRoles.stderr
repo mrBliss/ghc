@@ -2,7 +2,7 @@
 MultiParamRoles.hs:26:5: error:
     • Explicit dictionary application to: ‘Convert a b’
       is not allowed because of instance incoherence:
-      In ‘a -> Set a -> Set a’
+      In the function type ‘a -> Set a -> Set a’
         Type variable ‘a’ has role Nominal
     • In the expression: f ((dict))
       In an equation for ‘g’:
