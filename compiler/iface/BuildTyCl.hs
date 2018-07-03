@@ -241,7 +241,8 @@ type TcMethInfo     -- A temporary intermediate, to communicate
 buildClass :: Name  -- Name of the class/tycon (they have the same Name)
            -> Name  -- Name of the dictionary tycon
            -> [TyConBinder]                -- Of the tycon
-           -> [Role]
+           -> [Role]                       -- Of the tycon
+           -> [Role]                       -- Of the dictionary tycon
            -> [FunDep TyVar]               -- Functional dependencies
            -- Super classes, associated types, method info, minimal complete
            -- def, name of the dictionary datacon, superclass fields of the
@@ -250,7 +251,8 @@ buildClass :: Name  -- Name of the class/tycon (they have the same Name)
                      Name, [FieldLabel])
            -> TcRnIf m n Class
 
-buildClass class_tycon_name dict_tycon_name binders roles fds Nothing
+buildClass class_tycon_name dict_tycon_name binders tycon_roles dict_roles fds
+           Nothing
   = fixM  $ \ rec_clas ->       -- Only name generation inside loop
     do  { traceIf (text "buildClass")
 
@@ -260,14 +262,13 @@ buildClass class_tycon_name dict_tycon_name binders roles fds Nothing
         ; co_tycon_name <- newImplicitBinder dict_tycon_name mkDictClassCoOcc
         ; let univ_bndrs  = tyConTyVarBinders binders
               univ_tvs    = binderVars univ_bndrs
-              class_tycon = mkClassTyCon class_tycon_name binders roles
+              class_tycon = mkClassTyCon class_tycon_name binders tycon_roles
                                          AbstractTyCon rec_clas
                                          class_tc_rep_name
               co_rhs_ty   = mkTyConApp (classTyCon rec_clas) (mkTyVarTys univ_tvs)
               co          = mkDictToClassCoAxiom co_tycon_name
                                                  (classDictTyCon rec_clas)
-                                                 univ_tvs roles co_rhs_ty
-              dict_roles  = map (`max` Representational) roles
+                                                 univ_tvs dict_roles co_rhs_ty -- TODOT which roles?
               dict_tycon = mkAlgTyCon dict_tycon_name binders liftedTypeKind
                                       dict_roles Nothing [] AbstractTyCon
                                       (DictTyCon rec_clas dict_tc_rep_nm co)
@@ -277,7 +278,7 @@ buildClass class_tycon_name dict_tycon_name binders roles fds Nothing
         ; traceIf (text "buildClass" <+> ppr class_tycon <+> ppr dict_tycon)
         ; return result }
 
-buildClass class_tycon_name dict_tycon_name binders roles fds
+buildClass class_tycon_name dict_tycon_name binders tycon_roles dict_roles fds
            (Just (sc_theta, at_items, sig_stuff, mindef, dict_datacon_name,
                   sc_fields))
   = fixM  $ \ rec_clas ->       -- Only name generation inside loop
@@ -367,15 +368,14 @@ buildClass class_tycon_name dict_tycon_name binders roles fds
           -- TODOT proper name?
         ; co_tycon_name <- newImplicitBinder dict_tycon_name mkDictClassCoOcc
         ; let co_rhs_ty = mkTyConApp (classTyCon rec_clas) (mkTyVarTys univ_tvs)
-              dict_roles = map (`max` Representational) roles
               co = mkDictToClassCoAxiom co_tycon_name (classDictTyCon rec_clas)
-                                        univ_tvs dict_roles co_rhs_ty
+                                        univ_tvs dict_roles co_rhs_ty  -- TODOT which roles?
 
 
         ; class_tc_rep_nm <- newTyConRepName class_tycon_name
         ; dict_tc_rep_nm  <- newTyConRepName dict_tycon_name
 
-        ; let { class_tycon = mkClassTyCon class_tycon_name binders roles
+        ; let { class_tycon = mkClassTyCon class_tycon_name binders tycon_roles
                                            class_rhs rec_clas class_tc_rep_nm
                 -- A class can be recursive, and in the case of newtypes
                 -- this matters.  For example

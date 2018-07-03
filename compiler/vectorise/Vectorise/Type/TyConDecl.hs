@@ -64,6 +64,7 @@ vectTyConDecl tycon name'
                      (error "buildClass Vectorise") -- TODOT fix
                      (tyConBinders tycon)       -- keep original kind
                      (map (const Nominal) (tyConRoles tycon)) -- all role are N for safety
+                     (map (const Nominal) (tyConRoles tycon)) -- TODOT
                      (snd . classTvsFds $ cls)  -- keep the original functional dependencies
                      (Just (
                          theta',                 -- superclasses

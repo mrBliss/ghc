@@ -1,0 +1,12 @@
+
+CoerceDictNom.hs:35:12: error:
+    • Couldn't match type ‘Age’ with ‘Int’
+        arising from a use of ‘coerce’
+    • In the expression: coerce cIntDict
+      In an equation for ‘cAgeDict’: cAgeDict = coerce cIntDict
+
+CoerceDictNom.hs:38:12: error:
+    • Couldn't match type ‘Int’ with ‘Age’
+        arising from a use of ‘coerce’
+    • In the expression: coerce dIntDict
+      In an equation for ‘dAgeDict’: dAgeDict = coerce dIntDict

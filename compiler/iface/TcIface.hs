@@ -729,12 +729,13 @@ tc_iface_decl _parent _ignore_prags
             (IfaceClass {ifName = class_tc_name,
                          ifDictTCName = dict_tc_name,
                          ifRoles = roles,
+                         ifDictRoles = dict_roles,
                          ifBinders = binders,
                          ifFDs = rdr_fds,
                          ifBody = IfAbstractClass})
   = bindIfaceTyConBinders binders $ \ binders' -> do
     { fds  <- mapM tc_fd rdr_fds
-    ; cls  <- buildClass class_tc_name dict_tc_name binders' roles
+    ; cls  <- buildClass class_tc_name dict_tc_name binders' roles dict_roles
                          fds Nothing
     ; return (ATyCon (classTyCon cls)) }
 
@@ -742,6 +743,7 @@ tc_iface_decl _parent ignore_prags
             (IfaceClass {ifName = class_tc_name,
                          ifDictTCName = dict_tc_name,
                          ifRoles = roles,
+                         ifDictRoles = dict_roles,
                          ifBinders = binders,
                          ifFDs = rdr_fds,
                          ifBody = IfConcreteClass {
@@ -762,7 +764,7 @@ tc_iface_decl _parent ignore_prags
               { ats  <- mapM (tc_at cls) rdr_ats
               ; traceIf (text "tc-iface-class4" <+> ppr class_tc_name)
               ; buildClass class_tc_name dict_tc_name binders'
-                           roles fds
+                           roles dict_roles fds
                            (Just (ctxt, ats, sigs, mindef, dict_dc_name,
                                   sc_fields)) }
     ; return (ATyCon (classTyCon cls)) }

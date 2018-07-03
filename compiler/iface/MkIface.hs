@@ -1731,6 +1731,7 @@ classToIfaceDecl env clas
   = ( env1
     , IfaceClass { ifName   = getName tycon,
                    ifRoles  = tyConRoles (classTyCon clas),
+                   ifDictRoles = tyConRoles (classDictTyCon clas),
                    ifDictTCName = getName dict_tycon,
                    ifBinders = toIfaceTyVarBinders tc_binders,
                    ifBody   = body,
