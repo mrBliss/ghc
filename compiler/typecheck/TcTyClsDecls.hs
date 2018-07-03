@@ -994,7 +994,10 @@ tcTyClDecl1 _parent roles_info
             do { MASSERT( isConstraintKind res_kind )
                ; traceTc "tcClassDecl 1" (ppr class_name $$ ppr binders)
                ; let tycon_name = class_name        -- We use the same name
-                     roles = roles_info tycon_name  -- for TyCon and Class
+                     tycon_roles = roles_info tycon_name  -- for TyCon and Class
+                     dict_tycon_roles = roles_info $
+                                        tyConName $
+                                        classDictTyCon clas
 
                ; ctxt' <- solveEqualities $ tcHsContext ctxt
                ; ctxt' <- zonkTcTypeToTypes emptyZonkEnv ctxt'
@@ -1013,8 +1016,8 @@ tcTyClDecl1 _parent roles_info
                           | otherwise
                           = Just (ctxt', at_stuff, sig_stuff, mindef,
                                   dict_con_name, sc_fields)
-               ; clas <- buildClass class_name dict_ty_name binders roles
-                                    fds' body
+               ; clas <- buildClass class_name dict_ty_name binders tycon_roles
+                                    dict_tycon_roles fds' body
                ; traceTc "tcClassDecl" (ppr fundeps $$ ppr binders $$
                                         ppr fds')
                ; return clas }

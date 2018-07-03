@@ -143,7 +143,8 @@ data IfaceDecl
 
   | IfaceClass { ifName    :: IfaceTopBndr,             -- Name of the class TyCon
                  ifDictTCName :: IfaceTopBndr,          -- Name of the dict TyCon
-                 ifRoles   :: [Role],                   -- Roles
+                 ifRoles      :: [Role],                -- Roles of the class TyCon
+                 ifDictRoles  :: [Role],                -- Roles of the dict TyCon
                  ifBinders :: [IfaceTyConBinder],
                  ifFDs     :: [FunDep IfLclName],       -- Functional dependencies
                  ifBody    :: IfaceClassBody            -- Methods, superclasses, ATs
@@ -1682,6 +1683,7 @@ instance Binary IfaceDecl where
                 ifName       = a2,
                 ifDictTCName = a3,
                 ifRoles      = a4,
+                ifDictRoles  = a13,
                 ifBinders    = a5,
                 ifFDs        = a6,
                 ifBody = IfConcreteClass {
@@ -1706,6 +1708,7 @@ instance Binary IfaceDecl where
         putIfaceTopBndr bh a10
         put_ bh a11
         put_ bh a12
+        put_ bh a13
 
     put_ bh (IfaceAxiom a1 a2 a3 a4) = do
         putByte bh 6
@@ -1732,6 +1735,7 @@ instance Binary IfaceDecl where
                 ifName    = a1,
                 ifDictTCName = a2,
                 ifRoles   = a3,
+                ifDictRoles = a6,
                 ifBinders = a4,
                 ifFDs     = a5,
                 ifBody = IfAbstractClass }) = do
@@ -1741,6 +1745,7 @@ instance Binary IfaceDecl where
         put_ bh a3
         put_ bh a4
         put_ bh a5
+        put_ bh a6
 
     get bh = do
         h <- getByte bh
@@ -1785,10 +1790,12 @@ instance Binary IfaceDecl where
                     a10 <- getIfaceTopBndr bh
                     a11 <- get bh
                     a12 <- get bh
+                    a13 <- get bh
                     return (IfaceClass {
                         ifName    = a2,
                         ifDictTCName = a3,
                         ifRoles   = a4,
+                        ifDictRoles = a13,
                         ifBinders = a5,
                         ifFDs     = a6,
                         ifBody = IfConcreteClass {
@@ -1822,10 +1829,12 @@ instance Binary IfaceDecl where
                     a3 <- get bh
                     a4 <- get bh
                     a5 <- get bh
+                    a6 <- get bh
                     return (IfaceClass {
                         ifName    = a1,
                         ifDictTCName = a2,
                         ifRoles   = a3,
+                        ifDictRoles = a6,
                         ifBinders = a4,
                         ifFDs     = a5,
                         ifBody = IfAbstractClass })

@@ -1,3 +1,4 @@
+test('CoerceDictNom', normal, compile_fail, [''])
 test('ImportDictMissing', [expect_broken(0), extra_files(['ExportClassOnly.hs'])], multimod_compile, ['ImportDictMissing', '-v0'])
 test('ImportMissingDictField', [expect_broken(0), extra_files(['ExportDictOnly.hs'])], multimod_compile, ['ImportMissingDictField', '-v0'])
 test('Incoherence1', normal, compile_fail, ['-XDictionaryApplications -Werror=incoherence'])
