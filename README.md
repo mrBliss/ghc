@@ -1,3 +1,6 @@
+*Looking for Partial Type Signatures? Check out the
+[`partial-sigs`](https://github.com/mrBliss/ghc/tree/partial-sigs) branch.*
+
 Coherent Explicit Dictionary Application for Haskell
 ====================================================
 
