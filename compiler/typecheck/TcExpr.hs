@@ -80,6 +80,7 @@ import qualified GHC.LanguageExtensions as LangExt
 
 import Data.Function
 import Data.List
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 {-
@@ -1566,9 +1567,10 @@ tcDictAnnotation dict_ty ann_ty
 -- application. This criterion determines when it is "safe" to violate the
 -- Global Uniqueness of Instances property.
 --
--- It is safe when all type class arguments are type variables that have a
--- role <= representational in tau, in the dictionary type itself, and in the
--- other constraints in the context. As the roles of type-class arguments
+-- It is safe when at least one type class arguments is a type variable that
+-- has a role <= representational in tau, in the dictionary type itself, and
+-- in the other constraints in the context. This type variable must occur in
+-- all superclasses of the dictionary. As the roles of type-class arguments
 -- default to nominal, we look at the roles of the dictionaries corresponding
 -- to the other constraints in the context.
 tcCheckDictAppRoleCriterion
@@ -1584,15 +1586,28 @@ tcCheckDictAppRoleCriterion matched tau ctxt
              tvs_with_roles_in_dict = zip tvs (getTyVarRolesInTy tvs dict)
              tvs_with_roles_in_ctxt = zip tvs (getTyVarRolesInTys tvs $
                                                map replaceClassWithDict ctxt)
-             nominals_in_tau  = [tv | (tv, Nominal) <- tvs_with_roles_in_tau]
-             nominals_in_dict = [tv | (tv, Nominal) <- tvs_with_roles_in_dict]
-             nominals_in_ctxt = [tv | (tv, Nominal) <- tvs_with_roles_in_ctxt]
+             tv_to_role = Map.fromListWith min $
+                          tvs_with_roles_in_tau ++
+                          tvs_with_roles_in_dict ++ tvs_with_roles_in_ctxt
+             tvs_occur_in_all_super_classes =
+               Map.fromList [ (tv, mentioned_in_all_super_classes tv matched)
+                            | tv <- tvs]
+             ok = any (\tv -> Representational <= tv_to_role Map.! tv &&
+                              tvs_occur_in_all_super_classes Map.! tv) tvs
        ; traceTc "Roles in tau"  (ppr tvs_with_roles_in_tau)
        ; traceTc "Roles in dict" (ppr tvs_with_roles_in_dict)
+       ; traceTc "Roles in ctxt" (ppr tvs_with_roles_in_ctxt)
+       ; traceTc "Mentioned in all super classes" (ppr tvs_occur_in_all_super_classes)
        ; when (null tvs) $ addErrTc $ vcat
          [ app_to_msg
          , text "is not allowed because the instance incoherence check"
          , text "requires type-variable arguments" ]
+       ; unless ok $ do {
+         -- TODO mention in the error message that the type variable doesn't
+         -- occur in all superclasses
+       ; let nominals_in_tau  = [tv | (tv, Nominal) <- tvs_with_roles_in_tau]
+             nominals_in_dict = [tv | (tv, Nominal) <- tvs_with_roles_in_dict]
+             nominals_in_ctxt = [tv | (tv, Nominal) <- tvs_with_roles_in_ctxt]
        ; unless (null nominals_in_tau) $ addErrTc $ vcat $
          not_allowed_msg ++
          [ text "In the function type" <+> quotes (ppr tau)
@@ -1610,13 +1625,16 @@ tcCheckDictAppRoleCriterion matched tau ctxt
          [ text "In the context" <+> quotes (pprTheta ctxt)
          , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
                            text "has role Nominal"
-                         | tv <- nominals_in_ctxt]] }
+                         | tv <- nominals_in_ctxt]] } }
   where
     app_to_msg =
       text "Explicit dictionary application to:" <+> quotes (ppr matched)
     not_allowed_msg =
       [ app_to_msg
       , text "is not allowed because of instance incoherence:" ]
+
+    mentions pred tv = tv `elemVarSet` tyCoVarsOfType pred
+    mentioned_in_all_super_classes tv pred = all (`mentions` tv) (transSuperClasses pred)
 
 -- Check for whether an explicit dictionary application is incoherent. Signal
 -- an error if it is the case.
