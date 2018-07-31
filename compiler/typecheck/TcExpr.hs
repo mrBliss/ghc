@@ -31,9 +31,10 @@ import TcUnify
 import BasicTypes
 import Inst
 import TcBinds          ( chooseInferredQuantifiers, tcLocalBinds )
-import TcValidity       ( tcDictAppIncoherenceCauses, tcIsEntailedBy )
 import TcSigs           ( tcUserTypeSig, tcInstSig )
-import TcSimplify       ( simplifyInfer, simplifyTop, InferMode(..) )
+import TcSimplify       ( simplifyInfer, simplifyTop, solveWanteds
+                        , InferMode(..) )
+import TcSMonad         ( runTcS )
 import FamInst          ( tcGetFamInstEnvs, tcLookupDataFamInst )
 import FamInstEnv       ( FamInstEnvs )
 import RnEnv            ( addUsedGRE )
@@ -79,6 +80,7 @@ import UniqSet ( nonDetEltsUniqSet )
 import qualified GHC.LanguageExtensions as LangExt
 
 import Data.Function
+import Data.Functor( ($>) )
 import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -1711,6 +1713,112 @@ tcCheckDictAppCoherence skol_tvs remainder constraint
          [ text "Explicit dictionary application to:" <+> quotes (ppr constraint)
          , text "is not allowed because of possible incoherence:"
          , nest 2 $ vcat (map ppr causes) ] } }
+
+-- Returns True if ct is entailed by given_cts
+tcIsEntailedBy :: [TcTyVar] -> TcPredType -> TcThetaType -> TcM Bool
+tcIsEntailedBy skol_tvs ct given_cts
+  = do { givens <- newEvVars given_cts
+       ; tc_lvl <- getTcLevel
+       ; wanted <- newWanted (GivenOrigin UnkSkol) {- TODOT -}
+                             (Just TypeLevel) ct
+       ; let wc_ct = mkSimpleWC [wanted]
+       ; (implics, _) <- buildImplicationFor tc_lvl UnkSkol {- TODOT -} skol_tvs
+                                             givens wc_ct
+       ; (wc_after_solving, _) <- runTcS $ solveWanteds (mkImplicWC implics)
+       ; return $ isEmptyWC wc_after_solving }
+
+tcDictAppIncoherenceCauses :: [TcTyVar]    -- Skolems of the context
+                           -> TcThetaType  -- Remainder  `Q_rest`
+                           -> TcPredType   -- Constraint `C_pass`
+                           -> TcM [IncoherenceCause]
+tcDictAppIncoherenceCauses skol_tvs remainder ct
+  = concatMapM (uncurry detect) $
+    (id, ct) : [(AncestorCaused, ancestor) | ancestor <- transSuperClasses ct]
+  where
+    -- isAncestorOf c1 c2 returns c2 if c1 is syntactically equal to an
+    -- ancestor of c2
+    isAncestorOf :: TcPredType -> TcPredType -> Maybe TcPredType
+    isAncestorOf c1 c2 = find (syntacticEqPredType c1) (transSuperClasses c2) $> c2
+
+    -- The first argument allows us to apply the AncestorCaused constructor
+    detect :: (IncoherenceCause -> IncoherenceCause) -> TcPredType -> TcM [IncoherenceCause]
+    detect mkIC constraint
+      = do { let sameConstaintInContext =
+                   map (mkIC . SameConstraintInContext) $
+                   filter (syntacticEqPredType constraint) remainder
+                 isAncestorOfConstraintInContext =
+                   map (mkIC . IsAncestorOfConstraintInContext constraint) $
+                   mapMaybe (constraint `isAncestorOf`) remainder
+           ; if not (null sameConstaintInContext)
+               || not (null isAncestorOfConstraintInContext)
+               then return (sameConstaintInContext ++ isAncestorOfConstraintInContext)
+               else do
+           { entailed_wo_ctxt <- tcIsEntailedBy skol_tvs constraint []
+           ; if entailed_wo_ctxt
+               then return1 $ mkIC $ CanBeDerivedWithoutContext
+                      { icConstraint = constraint }
+               else do
+           { entailed_w_ctxt <- tcIsEntailedBy skol_tvs constraint remainder
+           ; if entailed_w_ctxt
+                then return1 $ mkIC $ CanBeDerivedWithContext
+                       {icConstraint = constraint, icContext = remainder }
+                else return [] } } }
+      where
+        return1 x = return [x]
+
+
+data IncoherenceCause
+  = AncestorCaused
+    { icAncestorCause :: IncoherenceCause
+    }
+    -- An ancestor of the constraint caused incoherence, for example:
+    -- (Eq a, >Ord a<)
+    -- Ord a has the ancestor Eq a, which occurs in the context
+
+  | SameConstraintInContext
+    { icConstraint :: TcPredType
+    }
+    -- (>Eq a<, Eq a)
+    -- Another Eq a constraint occurs in the context.
+
+  | IsAncestorOfConstraintInContext
+    { icConstraint :: TcPredType
+    , icOtherConstraint :: TcPredType
+    }
+    -- (>Eq a<, Ord a)
+    -- Eq a is the ancestor of another constraint in the context
+
+  | CanBeDerivedWithoutContext
+    { icConstraint :: TcPredType
+    }
+    -- (>A<, B)
+    -- There is a global instance for A
+
+  | CanBeDerivedWithContext
+    { icConstraint :: TcPredType
+    , icContext :: TcThetaType
+    }
+    -- (>Eq a<, a ~ b, Eq b)
+    -- Eq a can be derived from the remainder of the context
+
+instance Outputable IncoherenceCause where
+  ppr (AncestorCaused { icAncestorCause = cause }) =
+    hang (text "Through an ancestor:") 2 (ppr cause)
+  ppr (SameConstraintInContext { icConstraint = ct}) = fsep
+    [quotes (ppr ct), text "occurs in the context"]
+    -- TODO underline the otherCt in the context
+  ppr (IsAncestorOfConstraintInContext { icConstraint = ct
+                                       , icOtherConstraint = otherCt }) = fsep
+    [ quotes (ppr ct)
+    , text "is the ancestor of another constraint in the context:"
+    , quotes (ppr otherCt) ]
+  ppr (CanBeDerivedWithoutContext { icConstraint = ct }) =
+    text "There is a global instance for" <+> quotes (ppr ct)
+  ppr (CanBeDerivedWithContext { icConstraint = ct
+                               , icContext = context }) = fsep
+    [ quotes (ppr ct)
+    , text "is entailed by the remainder of the context:"
+    , quotes (pprTheta context) ]
 
 
 -- | Create a wrapper to reorder the first list of constraints to match the
