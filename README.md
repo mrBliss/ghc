@@ -16,7 +16,7 @@ following commands in the root directory of the repository:
 
     $ TOP="$(pwd)"
     $ cabal install --with-compiler="$TOP/inplace/bin/ghc-stage2" --package-db="$TOP/inplace/lib/package.conf.d" QuickCheck mtl
-    $ inplace/bin/ghc-stage2 -package QuickCheck -package mtl Sample.hs
+    $ "$TOP/inplace/bin/ghc-stage2" -package QuickCheck -package mtl Sample.hs
 
 To start a GHCi session, add the `--interactive` flag to the last command.
 
