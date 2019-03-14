@@ -1604,25 +1604,26 @@ tcCheckDictAppRoleCriterion matched tau ctxt
          [ app_to_msg
          , text "is not allowed because the instance incoherence check"
          , text "requires type-variable arguments" ]
-       ; unless ok $ do {
+       ; warn <- woptM Opt_WarnDictAppRoles
+       ; unless (not warn || ok) $ do {
          -- TODO mention in the error message that the type variable doesn't
          -- occur in all superclasses
        ; let nominals_in_tau  = [tv | (tv, Nominal) <- tvs_with_roles_in_tau]
              nominals_in_dict = [tv | (tv, Nominal) <- tvs_with_roles_in_dict]
              nominals_in_ctxt = [tv | (tv, Nominal) <- tvs_with_roles_in_ctxt]
-       ; unless (null nominals_in_tau) $ addWarnTc $ vcat $
+       ; unless (null nominals_in_tau) $ addWarnTc (Reason Opt_WarnDictAppRoles) $ vcat $
          not_allowed_msg ++
          [ text "In the function type" <+> quotes (ppr tau)
          , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
                            text "has role Nominal"
                          | tv <- nominals_in_tau]]
-       ; unless (null nominals_in_dict) $ addWarnTc $ vcat $
+       ; unless (null nominals_in_dict) $ addWarnTc (Reason Opt_WarnDictAppRoles) $ vcat $
          not_allowed_msg ++
          [ text "In the dictionary type" <+> quotes (ppr dict)
          , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
                            text "has role Nominal"
                          | tv <- nominals_in_dict]]
-       ; unless (null nominals_in_ctxt) $ addWarnTc $ vcat $
+       ; unless (null nominals_in_ctxt) $ addWarnTc (Reason Opt_WarnDictAppRoles) $ vcat $
          not_allowed_msg ++
          [ text "In the context" <+> quotes (pprTheta ctxt)
          , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
