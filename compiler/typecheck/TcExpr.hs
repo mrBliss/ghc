@@ -1610,19 +1610,19 @@ tcCheckDictAppRoleCriterion matched tau ctxt
        ; let nominals_in_tau  = [tv | (tv, Nominal) <- tvs_with_roles_in_tau]
              nominals_in_dict = [tv | (tv, Nominal) <- tvs_with_roles_in_dict]
              nominals_in_ctxt = [tv | (tv, Nominal) <- tvs_with_roles_in_ctxt]
-       ; unless (null nominals_in_tau) $ addErrTc $ vcat $
+       ; unless (null nominals_in_tau) $ addWarnTc $ vcat $
          not_allowed_msg ++
          [ text "In the function type" <+> quotes (ppr tau)
          , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
                            text "has role Nominal"
                          | tv <- nominals_in_tau]]
-       ; unless (null nominals_in_dict) $ addErrTc $ vcat $
+       ; unless (null nominals_in_dict) $ addWarnTc $ vcat $
          not_allowed_msg ++
          [ text "In the dictionary type" <+> quotes (ppr dict)
          , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
                            text "has role Nominal"
                          | tv <- nominals_in_dict]]
-       ; unless (null nominals_in_ctxt) $ addErrTc $ vcat $
+       ; unless (null nominals_in_ctxt) $ addWarnTc $ vcat $
          not_allowed_msg ++
          [ text "In the context" <+> quotes (pprTheta ctxt)
          , nest 2 $ vcat [ text "Type variable" <+> quotes (ppr tv) <+>
