@@ -749,6 +749,7 @@ data WarningFlag =
    | Opt_WarnPartialFields                -- Since 8.4
    | Opt_WarnMissingExportList
    | Opt_WarnIncoherence
+   | Opt_WarnDictAppRoles
    deriving (Eq, Show, Enum)
 
 data Language = Haskell98 | Haskell2010
@@ -3760,7 +3761,8 @@ wWarningFlagsDeps = [
   flagSpec "missing-home-modules"        Opt_WarnMissingHomeModules,
   flagSpec "unrecognised-warning-flags"  Opt_WarnUnrecognisedWarningFlags,
   flagSpec "partial-fields"              Opt_WarnPartialFields,
-  flagSpec "incoherence"                 Opt_WarnIncoherence ]
+  flagSpec "incoherence"                 Opt_WarnIncoherence,
+  flagSpec "dictionary-application-roles" Opt_WarnDictAppRoles ]
 
 -- | These @-\<blah\>@ flags can all be reversed with @-no-\<blah\>@
 negatableFlagsDeps :: [(Deprecation, FlagSpec GeneralFlag)]
@@ -4387,7 +4389,8 @@ standardWarnings -- see Note [Documenting warning flags]
         Opt_WarnTabs,
         Opt_WarnUnrecognisedWarningFlags,
         Opt_WarnSimplifiableClassConstraints,
-        Opt_WarnIncoherence
+        Opt_WarnIncoherence,
+        Opt_WarnDictAppRoles
       ]
 
 -- | Things you get with -W

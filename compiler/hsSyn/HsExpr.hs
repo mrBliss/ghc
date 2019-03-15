@@ -335,9 +335,9 @@ data HsExpr p
   | HsAppTypeOut (LHsExpr p) (LHsWcType GhcRn) -- just for pretty-printing
 
   | HsAppDict    (LHsExpr p)
-                 (LHsExpr p)             -- ^ Dictionary to apply
-                 (Maybe (LHsSigType p))  -- ^ Optional type-class constraint
-                                         -- annotation of the dictionary.
+                 (LHsExpr p)             --   Dictionary to apply
+                 (Maybe (LHsSigType p))  --   Optional type-class constraint
+                                         --   annotation of the dictionary.
     -- TODOT Annotation crap
 
   -- | Operator applications:
